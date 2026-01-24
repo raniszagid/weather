@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error | WeatherApp</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: url('https://source.unsplash.com/1600x900/?weather') no-repeat center center fixed;
+            background-size: cover;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            height: 100px;
+            width: auto;
+            filter: drop-shadow(0 0 5px rgba(0,0,0,0.3));
+            transition: transform 0.3s ease;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
+        }
+
+        .error-container {
+            background-color: rgba(255, 255, 255, 0.95);
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            text-align: center;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .error-code {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .error-message {
+            font-size: 1.4rem;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+
+        .error-details {
+            background-color: rgba(245, 245, 245, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: monospace;
+            word-break: break-word;
+        }
+
+        .home-button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border: none;
+            cursor: pointer;
+        }
+
+        .home-button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a th:href="@{/weather}"><img th:src="@{/images/logo.jpg}" alt="WeatherApp Logo" class="logo"></a>
+    </div>
+
+    <div class="error-container">
+        <div class="error-code" th:text="'Error ' + ${status}">Error 404</div>
+        <div class="error-message" th:text="${errorMessage}">Page not found</div>
+        
+        <div th:if="${errorDetails}" class="error-details" th:text="${errorDetails}">
+            Additional error details...
+        </div>
+        
+        <a href="/weather" class="home-button">Return to Home</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Search History</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: url('https://source.unsplash.com/1600x900/?weather') no-repeat center center fixed;
+            background-size: cover;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            height: 100px;
+            width: auto;
+            filter: drop-shadow(0 0 5px rgba(0,0,0,0.3));
+            transition: transform 0.3s ease;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
+        }
+
+        .back-btn {
+            background-color: rgba(76, 175, 80, 0.9);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .back-btn:hover {
+            background-color: rgba(69, 160, 73, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .history-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .history-item {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .history-item h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .forecast-item {
+            background-color: rgba(245, 245, 245, 0.9);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .no-history {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .user-menu {
+            position: relative;
+            display: inline-block;
+        }
+
+        .user-btn {
+            background-color: rgba(76, 175, 80, 0.9);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .user-btn:hover {
+            background-color: rgba(69, 160, 73, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: rgba(255, 255, 255, 0.98);
+            min-width: 180px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+            border-radius: 8px;
+            z-index: 100;
+            overflow: hidden;
+            margin-top: 10px;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+        }
+
+        .user-menu:hover .dropdown-content {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .dropdown-content a {
+            color: #333;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid #eee;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #f5f5f5;
+            padding-left: 20px;
+        }
+
+        .dropdown-content form {
+            margin: 0;
+            padding: 0;
+            border-bottom: none;
+        }
+
+        .dropdown-content input[type="submit"] {
+            background: none;
+            border: none;
+            width: 100%;
+            text-align: left;
+            padding: 12px 16px;
+            color: #e74c3c;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-content input[type="submit"]:hover {
+            background-color: #f5f5f5;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="/../images/logo.jpg" alt="WeatherApp Logo" class="logo">
+        
+        <div class="user-menu" th:if="${#authentication.principal != 'anonymousUser'}">
+            <button class="user-btn">
+                <span th:text="${#authentication.principal.username}">User</span>
+                <span>▼</span>
+            </button>
+            <div class="dropdown-content">
+                <a href="/weather">Home</a>
+                <form th:action="@{/logout}" th:method="POST">
+                    <input type="submit" value="Logout"/>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="history-container">
+        <a href="/weather" class="back-btn">← Back to Main</a>
+        
+        <h2 style="text-align: center; color: black;">Your Search History</h2>
+        
+        <div th:if="${history.empty}">
+            <div class="no-history">
+                <h3>No search history yet</h3>
+                <p>Your weather searches will appear here</p>
+            </div>
+        </div>
+        
+        <div th:each="request : ${history}" class="history-item">
+            <h3 th:text="${request.city + ' - ' + request.timestamp}"></h3>
+            <p th:text="${'Temperature: ' + request.mainTemperature}"></p>
+            <p th:text="${'Wind: ' + request.mainWind}"></p>
+            <p th:text="${'Description: ' + request.description}"></p>
+            
+            <h4 style="margin-top: 15px;">Forecast:</h4>
+            <div th:each="elem : ${request.forecast}" class="forecast-item">
+                <p th:text="${'Day ' + elem.day}"></p>
+                <p th:text="${'Temperature: ' + elem.temperature}"></p>
+                <p th:text="${'Wind: ' + elem.wind}"></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

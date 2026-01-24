@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: weather
+  datasource:
+    url: "jdbc:postgresql://localhost:5433/weather_db" # для запуска в docker 'db:5432'; для локального 'localhost:5433'
+    username: "postgres"
+    password: "postgres"
+    driverClassName: org.postgresql.Driver
+  liquibase:
+    enabled: true
+    change-log: db/changelog/db.changelog-master.xml
