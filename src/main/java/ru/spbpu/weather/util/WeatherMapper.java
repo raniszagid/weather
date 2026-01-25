@@ -12,9 +12,7 @@ import ru.spbpu.weather.model.Weather;
 import ru.spbpu.weather.repository.DayRepository;
 import ru.spbpu.weather.repository.WeatherRepository;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -48,7 +46,10 @@ public class WeatherMapper {
     }
 
     public List<Day> getForecast(WeatherDto dto, Weather entity) {
-        return dto.getForecast().stream().map(d -> toDayEntity(d, entity)).filter(Objects::nonNull).toList();
+        if (dto.getForecast() == null)
+            return Collections.emptyList();
+        else
+            return dto.getForecast().stream().map(d -> toDayEntity(d, entity)).filter(Objects::nonNull).toList();
     }
 
     public WeatherDto toWeatherDto(Weather entity) {
@@ -62,7 +63,7 @@ public class WeatherMapper {
                 .forecast(list)
                 .build();
     }
-    private Day toDayEntity(DayDto dto, Weather weather) {
+    protected Day toDayEntity(DayDto dto, Weather weather) {
         int dayNumber = Integer.parseInt(dto.getDay());
         try {
             String[] temperatureArray = dto.getTemperature().split(" ");
@@ -80,7 +81,7 @@ public class WeatherMapper {
         }
     }
 
-    private DayDto toDayDto(Day entity) {
+    protected DayDto toDayDto(Day entity) {
         String temperatureString = temperatureSymbol(entity.getTemperature()) + entity.getTemperature() + TEMPERATURE_UNIT;
         String windString = entity.getWind() + WIND_UNIT;
         return DayDto.builder()
@@ -90,11 +91,9 @@ public class WeatherMapper {
                 .build();
     }
 
-    private String temperatureSymbol(int value) {
+    protected String temperatureSymbol(int value) {
         if (value > 0)
             return "+";
-        else if (value < 0)
-            return "-";
         else
             return "";
     }
