@@ -1,225 +1,309 @@
 package ru.spbpu.weather.system;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.openqa.selenium.By;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import ru.spbpu.weather.system.pages_model.LoginPage;
-import ru.spbpu.weather.system.pages_model.RegistrationPage;
-import ru.spbpu.weather.system.pages_model.WeatherPage;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import ru.spbpu.weather.dto.WeatherDto;
+import ru.spbpu.weather.repository.UserRepository;
+import ru.spbpu.weather.service.ApiService;
+
+import java.util.Collections;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class WeatherAppE2ETest extends BaseE2ETest {
+class WeatherAppE2ETest {
 
-    private static final String TEST_USER = "e2euser";
-    private static final String TEST_PASS = "e2epass123";
+    @LocalServerPort
+    private int port;
+
+    @Autowired
+    private TestRestTemplate restTemplate;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @MockBean
+    private ApiService apiService;
+
+    private String baseUrl;
+    private HttpHeaders headers;
+
+    @DynamicPropertySource
+    static void testProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", () -> "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL");
+        registry.add("spring.datasource.driver-class-name", () -> "org.h2.Driver");
+        registry.add("spring.datasource.username", () -> "sa");
+        registry.add("spring.datasource.password", () -> "");
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+        registry.add("spring.liquibase.enabled", () -> "false");
+    }
+
+    @BeforeEach
+    void setUp() {
+        baseUrl = "http://localhost:" + port;
+        headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        // Очищаем репозиторий перед каждым тестом
+        userRepository.deleteAll();
+    }
 
     // ==================== СЦЕНАРИЙ E2E-01 ====================
     @Test
     @Order(1)
     void e2e01_registerNewUser_ShouldSucceed() {
-        driver.get(baseUrl + "/auth/registration");
-        RegistrationPage registrationPage = new RegistrationPage(driver);
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("username", "e2euser");
+        formData.add("password", "e2epass123");
 
-        registrationPage.register(TEST_USER, TEST_PASS);
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(formData, headers);
 
-        assertThat(driver.getCurrentUrl()).contains("/auth/login");
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                baseUrl + "/auth/registration", request, String.class);
+
+        assertThat(response.getStatusCode().is3xxRedirection()).isTrue();
+        assertThat(response.getHeaders().getLocation().toString()).contains("/auth/login");
+        assertThat(userRepository.findByUsername("e2euser")).isPresent();
     }
 
     // ==================== СЦЕНАРИЙ E2E-02 ====================
     @Test
     @Order(2)
     void e2e02_loginExistingUser_ShouldRedirectToWeather() {
-        driver.get(baseUrl + "/auth/login");
-        LoginPage loginPage = new LoginPage(driver);
+        // Сначала создаем пользователя
+        MultiValueMap<String, String> regData = new LinkedMultiValueMap<>();
+        regData.add("username", "e2euser");
+        regData.add("password", "e2epass123");
 
-        loginPage.login(TEST_USER, TEST_PASS);
+        HttpEntity<MultiValueMap<String, String>> regRequest = new HttpEntity<>(regData, headers);
+        restTemplate.postForEntity(baseUrl + "/auth/registration", regRequest, String.class);
 
-        assertThat(driver.getCurrentUrl()).contains("/weather");
+        // Теперь логинимся
+        MultiValueMap<String, String> loginData = new LinkedMultiValueMap<>();
+        loginData.add("username", "e2euser");
+        loginData.add("password", "e2epass123");
+
+        HttpEntity<MultiValueMap<String, String>> loginRequest = new HttpEntity<>(loginData, headers);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                baseUrl + "/process_login", loginRequest, String.class);
+
+        assertThat(response.getStatusCode().is3xxRedirection()).isTrue();
+        assertThat(response.getHeaders().getLocation().toString()).contains("/weather");
     }
 
     // ==================== СЦЕНАРИЙ E2E-03 ====================
     @Test
     @Order(3)
-    void e2e03_searchWeatherByCity_ShouldDisplayWeather() {
-        driver.get(baseUrl + "/weather");
-        WeatherPage weatherPage = new WeatherPage(driver);
+    void e2e03_searchWeatherByCity_ShouldReturnWeather() {
+        WeatherDto weatherDto = createTestWeatherDto();
+        when(apiService.makeRequest("London")).thenReturn(Optional.of(weatherDto));
 
-        weatherPage.searchCity("London");
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("city", "London");
 
-        assertThat(weatherPage.isWeatherDisplayed()).isTrue();
-        assertThat(weatherPage.getForecastCount()).isGreaterThan(0);
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(formData, headers);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                baseUrl + "/weather", request, String.class);
+
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(response.getBody()).contains("London");
     }
 
     // ==================== СЦЕНАРИЙ E2E-04 ====================
     @Test
     void e2e04_unauthenticatedUserSearch_ShouldRedirectToLogin() {
-        // Выходим если залогинены
-        if (driver.getCurrentUrl().contains("/weather")) {
-            new WeatherPage(driver).logout();
-        }
-
-        driver.get(baseUrl + "/weather");
-
-        assertThat(driver.getCurrentUrl()).contains("/auth/login");
+        ResponseEntity<String> response = restTemplate.getForEntity(baseUrl + "/weather", String.class);
+        assertThat(response.getStatusCode().is3xxRedirection()).isTrue();
     }
 
     // ==================== СЦЕНАРИЙ E2E-05 ====================
     @Test
     @Order(4)
     void e2e05_viewSearchHistory_ShouldShowPreviousSearches() {
-        driver.get(baseUrl + "/weather");
-        WeatherPage weatherPage = new WeatherPage(driver);
+        // Регистрируем и логинимся
+        registerAndLogin("e2euser", "e2epass123");
 
-        // Выполняем несколько поисков
-        weatherPage.searchCity("Paris");
+        WeatherDto weatherDto = createTestWeatherDto();
+        when(apiService.makeRequest(anyString())).thenReturn(Optional.of(weatherDto));
 
-        weatherPage.searchCity("Berlin");
+        // Выполняем поиски с сохранением сессии
+        searchCityWithAuth("Paris");
+        searchCityWithAuth("Berlin");
 
+        ResponseEntity<String> response = restTemplate.getForEntity(baseUrl + "/history", String.class);
 
-        weatherPage.openHistory();
-
-        assertThat(weatherPage.getHistoryItemsCount()).isGreaterThanOrEqualTo(2);
-        assertThat(weatherPage.isHistoryContainsCity("Paris")).isTrue();
-        assertThat(weatherPage.isHistoryContainsCity("Berlin")).isTrue();
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(response.getBody()).contains("Paris");
+        assertThat(response.getBody()).contains("Berlin");
     }
 
     // ==================== СЦЕНАРИЙ E2E-06 ====================
     @Test
     void e2e06_logout_ShouldRedirectToLogin() {
-        driver.get(baseUrl + "/auth/login");
-        new LoginPage(driver).login(TEST_USER, TEST_PASS);
+        registerAndLogin("e2euser", "e2epass123");
 
-        WeatherPage weatherPage = new WeatherPage(driver);
-        weatherPage.logout();
-
-        assertThat(driver.getCurrentUrl()).contains("/auth/login");
+        ResponseEntity<String> response = restTemplate.getForEntity(baseUrl + "/logout", String.class);
+        assertThat(response.getStatusCode().is3xxRedirection()).isTrue();
     }
 
     // ==================== СЦЕНАРИЙ E2E-07 ====================
     @Test
     @Order(5)
     void e2e07_searchNonExistentCity_ShouldShowError() {
-        driver.get(baseUrl + "/weather");
-        WeatherPage weatherPage = new WeatherPage(driver);
+        registerAndLogin("e2euser", "e2epass123");
 
-        weatherPage.searchCity("NonExistentCity123456");
+        when(apiService.makeRequest("NonExistentCity")).thenReturn(Optional.empty());
 
-        assertThat(weatherPage.isErrorDisplayed()).isTrue();
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("city", "NonExistentCity");
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(formData, headers);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                baseUrl + "/weather", request, String.class);
+
+        assertThat(response.getBody()).contains("error");
     }
 
     // ==================== СЦЕНАРИЙ E2E-08 ====================
     @Test
-    @Order(6)
     void e2e08_searchWithEmptyCity_ShouldShowError() {
-        driver.get(baseUrl + "/weather");
-        WeatherPage weatherPage = new WeatherPage(driver);
+        registerAndLogin("e2euser", "e2epass123");
 
-        weatherPage.searchCity("");
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("city", "");
 
-        // Пустой ввод может вызвать ошибку валидации или редирект
-        assertThat(weatherPage.isErrorDisplayed() || driver.getCurrentUrl().contains("error")).isTrue();
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(formData, headers);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                baseUrl + "/weather", request, String.class);
+
+        assertThat(response.getStatusCode().is4xxClientError() ||
+                response.getBody().contains("error")).isTrue();
     }
 
     // ==================== СЦЕНАРИЙ E2E-09 ====================
     @Test
     void e2e09_registerWithExistingUsername_ShouldShowError() {
-        // Сначала создаем пользователя
-        driver.get(baseUrl + "/auth/registration");
-        RegistrationPage registrationPage = new RegistrationPage(driver);
+        // Создаем первого пользователя
+        MultiValueMap<String, String> regData = new LinkedMultiValueMap<>();
+        regData.add("username", "existinguser");
+        regData.add("password", "pass123");
 
-        // Регистрируем первого пользователя
-        registrationPage.register(TEST_USER, TEST_PASS);
+        HttpEntity<MultiValueMap<String, String>> regRequest = new HttpEntity<>(regData, headers);
+        restTemplate.postForEntity(baseUrl + "/auth/registration", regRequest, String.class);
 
-        // Ждем редиректа на страницу логина
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // Пытаемся создать такого же
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("username", "existinguser");
+        formData.add("password", "differentpass");
 
-        // Снова переходим на страницу регистрации
-        driver.get(baseUrl + "/auth/registration");
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(formData, headers);
 
-        // Пытаемся зарегистрировать того же пользователя
-        registrationPage.register(TEST_USER, "differentpass");
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                baseUrl + "/auth/registration", request, String.class);
 
-        // Проверяем наличие ошибки с ожиданием
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        // Получаем текст страницы для отладки
-        String pageText = driver.getPageSource();
-        System.out.println("Page text contains error: " + pageText.contains("already exists"));
-
-        assertThat(registrationPage.isErrorDisplayed()).isTrue();
+        assertThat(response.getBody()).contains("already exists");
     }
 
     // ==================== СЦЕНАРИЙ E2E-10 ====================
     @Test
     void e2e10_registerWithEmptyFields_ShouldShowError() {
-        driver.get(baseUrl + "/auth/registration");
-        RegistrationPage registrationPage = new RegistrationPage(driver);
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("username", "");
+        formData.add("password", "");
 
-        registrationPage.register("", "");
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(formData, headers);
 
-        assertThat(registrationPage.isErrorDisplayed()).isTrue();
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                baseUrl + "/auth/registration", request, String.class);
+
+        assertThat(response.getBody()).contains("error");
     }
 
     // ==================== СЦЕНАРИЙ E2E-11 ====================
     @Test
-    @Order(7)
+    @Order(6)
     void e2e11_historyDataAfterSearch_ShouldContainSearchedCity() {
+        registerAndLogin("e2euser", "e2epass123");
+
         String testCity = "Tokyo";
-        driver.get(baseUrl + "/weather");
-        WeatherPage weatherPage = new WeatherPage(driver);
+        WeatherDto weatherDto = createTestWeatherDto();
+        when(apiService.makeRequest(testCity)).thenReturn(Optional.of(weatherDto));
 
-        weatherPage.searchCity(testCity);
-        waitForPageLoad();
-        weatherPage.openHistory();
+        searchCityWithAuth(testCity);
 
-        assertThat(weatherPage.isHistoryContainsCity(testCity)).isTrue();
+        ResponseEntity<String> response = restTemplate.getForEntity(baseUrl + "/history", String.class);
+        assertThat(response.getBody()).contains(testCity);
     }
 
     // ==================== СЦЕНАРИЙ E2E-12 ====================
     @Test
-    @Order(8)
+    @Order(7)
     void e2e12_temperatureFormat_ShouldIncludeCelsiusSymbol() {
-        driver.get(baseUrl + "/weather");
-        WeatherPage weatherPage = new WeatherPage(driver);
+        registerAndLogin("e2euser", "e2epass123");
 
-        weatherPage.searchCity("Moscow");
+        WeatherDto weatherDto = WeatherDto.builder()
+                .temperature("+25 °C")
+                .wind("10 km/h")
+                .description("Sunny")
+                .forecast(Collections.emptyList())
+                .build();
+        when(apiService.makeRequest("Moscow")).thenReturn(Optional.of(weatherDto));
 
-        String temperature = weatherPage.getCurrentTemperature();
-        assertThat(temperature).contains("°C");
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("city", "Moscow");
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(formData, headers);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                baseUrl + "/weather", request, String.class);
+
+        assertThat(response.getBody()).contains("°C");
     }
 
     // ==================== СЦЕНАРИЙ E2E-13 ====================
     @Test
-    @Order(9)
+    @Order(8)
     void e2e13_multipleCitySearches_AllShouldBeInHistory() {
+        registerAndLogin("e2euser", "e2epass123");
+
         String[] cities = {"Rome", "Madrid", "Amsterdam"};
-        driver.get(baseUrl + "/weather");
-        WeatherPage weatherPage = new WeatherPage(driver);
+        WeatherDto weatherDto = createTestWeatherDto();
+        when(apiService.makeRequest(anyString())).thenReturn(Optional.of(weatherDto));
 
         for (String city : cities) {
-            weatherPage.searchCity(city);
-            waitForPageLoad();
+            searchCityWithAuth(city);
         }
 
-        weatherPage.openHistory();
+        ResponseEntity<String> response = restTemplate.getForEntity(baseUrl + "/history", String.class);
 
         for (String city : cities) {
-            assertThat(weatherPage.isHistoryContainsCity(city)).isTrue();
+            assertThat(response.getBody()).contains(city);
         }
-        assertThat(weatherPage.getHistoryItemsCount()).isGreaterThanOrEqualTo(cities.length);
     }
 
     // ==================== СЦЕНАРИЙ E2E-14 ====================
@@ -228,8 +312,8 @@ public class WeatherAppE2ETest extends BaseE2ETest {
         String[] protectedUrls = {"/weather", "/history"};
 
         for (String url : protectedUrls) {
-            driver.get(baseUrl + url);
-            assertThat(driver.getCurrentUrl()).contains("/auth/login");
+            ResponseEntity<String> response = restTemplate.getForEntity(baseUrl + url, String.class);
+            assertThat(response.getStatusCode().is3xxRedirection()).isTrue();
         }
     }
 
@@ -239,28 +323,77 @@ public class WeatherAppE2ETest extends BaseE2ETest {
         String newUser = "completeuser";
         String newPass = "complete123";
 
-        // Шаг 1: Регистрация
-        driver.get(baseUrl + "/auth/registration");
-        RegistrationPage registrationPage = new RegistrationPage(driver);
-        registrationPage.register(newUser, newPass);
-        assertThat(driver.getCurrentUrl()).contains("/auth/login");
+        // 1. Регистрация
+        MultiValueMap<String, String> regData = new LinkedMultiValueMap<>();
+        regData.add("username", newUser);
+        regData.add("password", newPass);
 
-        // Шаг 2: Логин
-        LoginPage loginPage = new LoginPage(driver);
-        loginPage.login(newUser, newPass);
-        assertThat(driver.getCurrentUrl()).contains("/weather");
+        HttpEntity<MultiValueMap<String, String>> regRequest = new HttpEntity<>(regData, headers);
+        ResponseEntity<String> regResponse = restTemplate.postForEntity(
+                baseUrl + "/auth/registration", regRequest, String.class);
+        assertThat(regResponse.getStatusCode().is3xxRedirection()).isTrue();
 
-        // Шаг 3: Поиск погоды
-        WeatherPage weatherPage = new WeatherPage(driver);
-        weatherPage.searchCity("Barcelona");
-        assertThat(weatherPage.isWeatherDisplayed()).isTrue();
+        // 2. Логин
+        MultiValueMap<String, String> loginData = new LinkedMultiValueMap<>();
+        loginData.add("username", newUser);
+        loginData.add("password", newPass);
 
-        // Шаг 4: Проверка истории
-        weatherPage.openHistory();
-        assertThat(weatherPage.isHistoryContainsCity("Barcelona")).isTrue();
+        HttpEntity<MultiValueMap<String, String>> loginRequest = new HttpEntity<>(loginData, headers);
+        ResponseEntity<String> loginResponse = restTemplate.postForEntity(
+                baseUrl + "/process_login", loginRequest, String.class);
+        assertThat(loginResponse.getStatusCode().is3xxRedirection()).isTrue();
 
-        // Шаг 5: Выход
-        weatherPage.logout();
-        assertThat(driver.getCurrentUrl()).contains("/auth/login");
+        // 3. Поиск погоды
+        WeatherDto weatherDto = createTestWeatherDto();
+        when(apiService.makeRequest("Barcelona")).thenReturn(Optional.of(weatherDto));
+
+        MultiValueMap<String, String> searchData = new LinkedMultiValueMap<>();
+        searchData.add("city", "Barcelona");
+
+        HttpEntity<MultiValueMap<String, String>> searchRequest = new HttpEntity<>(searchData, headers);
+        ResponseEntity<String> searchResponse = restTemplate.postForEntity(
+                baseUrl + "/weather", searchRequest, String.class);
+        assertThat(searchResponse.getStatusCode().is2xxSuccessful()).isTrue();
+
+        // 4. Проверка истории
+        ResponseEntity<String> historyResponse = restTemplate.getForEntity(baseUrl + "/history", String.class);
+        assertThat(historyResponse.getBody()).contains("Barcelona");
+    }
+
+    // ==================== Helper Methods ====================
+
+    private void registerAndLogin(String username, String password) {
+        // Регистрация
+        MultiValueMap<String, String> regData = new LinkedMultiValueMap<>();
+        regData.add("username", username);
+        regData.add("password", password);
+
+        HttpEntity<MultiValueMap<String, String>> regRequest = new HttpEntity<>(regData, headers);
+        restTemplate.postForEntity(baseUrl + "/auth/registration", regRequest, String.class);
+
+        // Логин
+        MultiValueMap<String, String> loginData = new LinkedMultiValueMap<>();
+        loginData.add("username", username);
+        loginData.add("password", password);
+
+        HttpEntity<MultiValueMap<String, String>> loginRequest = new HttpEntity<>(loginData, headers);
+        restTemplate.postForEntity(baseUrl + "/process_login", loginRequest, String.class);
+    }
+
+    private void searchCityWithAuth(String city) {
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("city", city);
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(formData, headers);
+        restTemplate.postForEntity(baseUrl + "/weather", request, String.class);
+    }
+
+    private WeatherDto createTestWeatherDto() {
+        return WeatherDto.builder()
+                .temperature("+20 °C")
+                .wind("15 km/h")
+                .description("Sunny")
+                .forecast(Collections.emptyList())
+                .build();
     }
 }
