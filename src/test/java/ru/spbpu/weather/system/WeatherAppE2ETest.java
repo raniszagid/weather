@@ -15,6 +15,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 import java.time.Duration;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -238,13 +239,22 @@ public class WeatherAppE2ETest {
     // ==================== СЦЕНАРИЙ E2E-09 ====================
     @Test
     void e2e09_registerWithExistingUsername_ShouldShowError() {
+        String username = "existing_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        // Первая регистрация
         driver.get(baseUrl + "/auth/registration");
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
+        driver.findElement(By.name("password")).sendKeys(password);
+        driver.findElement(By.xpath("//form//button | //form//input[@type='submit']")).click();
 
-        wait.until(ExpectedConditions.elementToBeClickable(By.name("username"))).sendKeys("e2euser");
+        // Вторая попытка с тем же именем
+        driver.get(baseUrl + "/auth/registration");
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
         driver.findElement(By.name("password")).sendKeys("differentpass");
-        driver.findElement(By.cssSelector("button[type='submit'], input[type='submit']")).click();
+        driver.findElement(By.xpath("//form//button | //form//input[@type='submit']")).click();
 
-        boolean hasError = driver.findElements(By.cssSelector(".field-error, .error, .alert-danger")).size() > 0;
+        boolean hasError = driver.findElements(By.xpath("//*[contains(text(), 'already exists')]")).size() > 0;
         assertThat(hasError).isTrue();
     }
 
