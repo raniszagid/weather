@@ -1,4 +1,4 @@
-package ru.spbpu.weather;
+package ru.spbpu.weather.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
