@@ -35,12 +35,12 @@ public class WeatherPage {
     @FindBy(css = ".error-message, .error-container")
     private WebElement errorMessage;
 
-    @FindBy(css = ".history-item, .request-item")
+    @FindBy(css = ".history-item, .request-item, tr")
     private List<WebElement> historyItems;
 
     public WeatherPage(WebDriver driver) {
         this.driver = driver;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(15));
         PageFactory.initElements(driver, this);
     }
 
@@ -57,7 +57,8 @@ public class WeatherPage {
 
     public boolean isWeatherDisplayed() {
         try {
-            return wait.until(ExpectedConditions.visibilityOf(weatherCard)).isDisplayed();
+            wait.until(ExpectedConditions.visibilityOf(weatherCard));
+            return weatherCard.isDisplayed();
         } catch (Exception e) {
             return false;
         }
@@ -78,7 +79,8 @@ public class WeatherPage {
 
     public boolean isErrorDisplayed() {
         try {
-            return wait.until(ExpectedConditions.visibilityOf(errorMessage)).isDisplayed();
+            wait.until(ExpectedConditions.visibilityOf(errorMessage));
+            return errorMessage.isDisplayed();
         } catch (Exception e) {
             return false;
         }

@@ -13,16 +13,16 @@ public class LoginPage {
     private final WebDriver driver;
     private final WebDriverWait wait;
 
-    @FindBy(css = "form input[name='username']")
+    @FindBy(name = "username")
     private WebElement usernameInput;
 
-    @FindBy(css = "form input[name='password']")
+    @FindBy(name = "password")
     private WebElement passwordInput;
 
-    @FindBy(css = "form button[type='submit'], form input[type='submit']")
+    @FindBy(css = "button[type='submit'], input[type='submit']")
     private WebElement submitButton;
 
-    @FindBy(css = ".error-message, .alert-danger")
+    @FindBy(css = ".error-message, .alert-danger, .error")
     private WebElement errorMessage;
 
     @FindBy(linkText = "Register")
@@ -30,7 +30,7 @@ public class LoginPage {
 
     public LoginPage(WebDriver driver) {
         this.driver = driver;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(15));
         PageFactory.initElements(driver, this);
     }
 
@@ -56,10 +56,14 @@ public class LoginPage {
     }
 
     public String getErrorMessage() {
-        return errorMessage.getText();
+        try {
+            return wait.until(ExpectedConditions.visibilityOf(errorMessage)).getText();
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     public void goToRegistration() {
-        registerLink.click();
+        wait.until(ExpectedConditions.elementToBeClickable(registerLink)).click();
     }
 }

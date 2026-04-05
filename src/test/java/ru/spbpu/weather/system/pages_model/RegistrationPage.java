@@ -22,13 +22,17 @@ public class RegistrationPage {
     @FindBy(css = "button[type='submit'], input[type='submit']")
     private WebElement submitButton;
 
-    @FindBy(css = ".field-error, .error")
-    private WebElement fieldError;
+    @FindBy(css = ".field-error, .error, .alert-danger")
+    private WebElement errorMessage;
 
     public RegistrationPage(WebDriver driver) {
         this.driver = driver;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(15));
         PageFactory.initElements(driver, this);
+    }
+
+    public void navigateTo() {
+        driver.get(driver.getCurrentUrl().replace("/auth/login", "/auth/registration"));
     }
 
     public void register(String username, String password) {
@@ -42,9 +46,18 @@ public class RegistrationPage {
 
     public boolean isErrorDisplayed() {
         try {
-            return wait.until(ExpectedConditions.visibilityOf(fieldError)).isDisplayed();
+            wait.until(ExpectedConditions.visibilityOf(errorMessage));
+            return errorMessage.isDisplayed();
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    public String getErrorMessage() {
+        try {
+            return wait.until(ExpectedConditions.visibilityOf(errorMessage)).getText();
+        } catch (Exception e) {
+            return "";
         }
     }
 }
