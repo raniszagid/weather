@@ -225,33 +225,4 @@ public class WeatherIntegrationTest {
         assertThat(convertedDto.getForecast().get(0).getTemperature()).isEqualTo("+16 °C");
         assertThat(convertedDto.getForecast().get(1).getTemperature()).isEqualTo("+14 °C");
     }
-
-    @Test
-    void weatherMapper_shouldMapDtoToEntityAndBack_2() {
-        Weather weatherEntity = weatherMapper.toWeatherEntity(sampleWeatherDto);
-        assertThat(weatherEntity.getTemperature()).isEqualTo(15);
-        assertThat(weatherEntity.getWind()).isEqualTo(10);
-        assertThat(weatherEntity.getDescription()).isEqualTo("Sunny");
-
-        RequestHistoryEntity request = new RequestHistoryEntity();
-        request.setAddress("TestCity");
-        request.setRequestTimestamp(LocalDateTime.now());
-        request.setUser(testUser);
-        requestRepository.save(request);
-
-        weatherEntity.setRequest(request);
-        weatherRepository.save(weatherEntity);
-
-        List<Day> forecast = weatherMapper.getForecast(sampleWeatherDto, weatherEntity);
-        assertThat(forecast).hasSize(2);
-        dayRepository.saveAll(forecast);
-
-        WeatherDto convertedDto = weatherMapper.toWeatherDto(weatherEntity);
-        assertThat(convertedDto.getTemperature()).isEqualTo("+15 °C");
-        assertThat(convertedDto.getWind()).isEqualTo("10 km/h");
-        assertThat(convertedDto.getDescription()).isEqualTo("Sunny");
-        assertThat(convertedDto.getForecast()).hasSize(2);
-        assertThat(convertedDto.getForecast().get(0).getTemperature()).isEqualTo("+16 °C");
-        assertThat(convertedDto.getForecast().get(1).getTemperature()).isEqualTo("+14 °C");
-    }
 }
