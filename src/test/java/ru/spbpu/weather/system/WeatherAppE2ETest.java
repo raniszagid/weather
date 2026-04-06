@@ -3,7 +3,6 @@ package ru.spbpu.weather.system;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.junit.jupiter.api.*;
 import org.openqa.selenium.By;
-import org.openqa.selenium.Cookie;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -16,7 +15,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 import java.time.Duration;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,7 +51,6 @@ public class WeatherAppE2ETest {
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--window-size=1920,1080");
-        // Включите headless для CI/CD
          options.addArguments("--headless=new");
 
         driver = new ChromeDriver(options);
@@ -68,7 +65,6 @@ public class WeatherAppE2ETest {
         }
     }
 
-    // ==================== СЦЕНАРИЙ E2E-01 ====================
     @Test
     @Order(1)
     void e2e01_registerNewUser_ShouldSucceed() {
@@ -87,7 +83,6 @@ public class WeatherAppE2ETest {
         assertThat(driver.getCurrentUrl()).contains("/auth/login");
     }
 
-    // ==================== СЦЕНАРИЙ E2E-02 ====================
     @Test
     @Order(2)
     void e2e02_loginExistingUser_ShouldRedirectToWeather() {
@@ -106,63 +101,73 @@ public class WeatherAppE2ETest {
         assertThat(driver.getCurrentUrl()).contains("/weather");
     }
 
-    // ==================== СЦЕНАРИЙ E2E-04 ====================
     @Test
-    void e2e04_unauthenticatedUserSearch_ShouldRedirectToLogin() {
+    void e2e03_unauthenticatedUserSearch_ShouldRedirectToLogin() {
         driver.get(baseUrl + "/weather");
 
         wait.until(ExpectedConditions.urlContains("/auth/login"));
         assertThat(driver.getCurrentUrl()).contains("/auth/login");
     }
 
-    // ==================== СЦЕНАРИЙ E2E-06 ====================
     @Test
-    void e2e06_logout_ShouldRedirectToLogin() throws InterruptedException {
+    void e2e04_logout_ShouldRedirectToLogin() {
         String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pass123";
 
-        // Шаг 1: Регистрация
         driver.get(baseUrl + "/auth/registration");
-        Thread.sleep(2000);
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         driver.findElement(By.name("username")).sendKeys(username);
         driver.findElement(By.name("password")).sendKeys(password);
         WebElement submitBtn = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", submitBtn);
-        Thread.sleep(3000);
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
-        // Шаг 2: Логин
         driver.get(baseUrl + "/auth/login");
-        Thread.sleep(2000);
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         driver.findElement(By.name("username")).sendKeys(username);
         driver.findElement(By.name("password")).sendKeys(password);
         WebElement loginBtn = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
-        Thread.sleep(5000);
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
-        // Проверяем что мы на странице погоды
         String currentUrl = driver.getCurrentUrl();
         System.out.println("URL after login: " + currentUrl);
         assertThat(currentUrl).contains("/weather");
 
-        // Шаг 3: Выход через GET запрос
         driver.get(baseUrl + "/logout");
-        Thread.sleep(3000);
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
-        // Проверяем что после выхода мы НЕ на странице погоды (редирект на логин)
         String afterLogoutUrl = driver.getCurrentUrl();
         System.out.println("URL after logout: " + afterLogoutUrl);
 
-        // Может быть редирект на /auth/login или просто не /weather
         assertThat(afterLogoutUrl).doesNotContain("/weather");
     }
 
-    // ==================== СЦЕНАРИЙ E2E-07 ====================
     @Test
-    void e2e07_searchNonExistentCity_ShouldShowError() {
+    void e2e05_searchNonExistentCity_ShouldShowError() {
         String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pass123";
 
-        // Шаг 1: Регистрация
         driver.get(baseUrl + "/auth/registration");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
         driver.findElement(By.name("password")).sendKeys(password);
@@ -174,7 +179,6 @@ public class WeatherAppE2ETest {
             Thread.currentThread().interrupt();
         }
 
-        // Шаг 2: Логин
         driver.get(baseUrl + "/auth/login");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
         driver.findElement(By.name("password")).sendKeys(password);
@@ -186,10 +190,8 @@ public class WeatherAppE2ETest {
             Thread.currentThread().interrupt();
         }
 
-        // Проверяем, что мы на странице погоды
         assertThat(driver.getCurrentUrl()).contains("/weather");
 
-        // Шаг 3: Поиск несуществующего города
         WebElement cityInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("city")));
         cityInput.sendKeys("NonExistentCity123456");
 
@@ -201,20 +203,17 @@ public class WeatherAppE2ETest {
             Thread.currentThread().interrupt();
         }
 
-        // Проверяем, что страница содержит сообщение об ошибке ИЛИ мы все еще на /weather
         String currentUrl = driver.getCurrentUrl();
         boolean hasError = driver.findElements(By.xpath("//*[contains(text(), 'error') or contains(text(), 'Error') or contains(text(), 'not found')]")).size() > 0;
 
-        // Тест проходит, если мы на странице погоды ИЛИ есть сообщение об ошибке
         assertThat(currentUrl.contains("/weather") || hasError).isTrue();
     }
-    // ==================== СЦЕНАРИЙ E2E-08 ====================
+
     @Test
-    void e2e08_searchWithEmptyCity_ShouldShowError() {
+    void e2e06_searchWithEmptyCity_ShouldShowError() {
         String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pass123";
 
-        // Шаг 1: Регистрация пользователя
         driver.get(baseUrl + "/auth/registration");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
         driver.findElement(By.name("password")).sendKeys(password);
@@ -222,39 +221,31 @@ public class WeatherAppE2ETest {
         WebElement submitButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", submitButton);
 
-        // Ждем редиректа на страницу логина
         wait.until(ExpectedConditions.urlContains("/auth/login"));
 
-        // Шаг 2: Логин
         wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
         driver.findElement(By.name("password")).sendKeys(password);
 
         WebElement loginButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", loginButton);
 
-        // Ждем перехода на страницу погоды
         wait.until(ExpectedConditions.urlContains("/weather"));
 
-        // Шаг 3: Поиск с пустым городом - просто проверяем, что форма существует
         WebElement cityInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("city")));
 
-        // Тест проходит, если мы на странице погоды
         assertThat(driver.getCurrentUrl()).contains("/weather");
     }
 
-    // ==================== СЦЕНАРИЙ E2E-09 ====================
     @Test
-    void e2e09_registerWithExistingUsername_ShouldShowError() {
+    void e2e07_registerWithExistingUsername_ShouldShowError() {
         String username = "existing_" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pass123";
 
-        // Первая регистрация
         driver.get(baseUrl + "/auth/registration");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
         driver.findElement(By.name("password")).sendKeys(password);
         driver.findElement(By.xpath("//form//button | //form//input[@type='submit']")).click();
 
-        // Вторая попытка с тем же именем
         driver.get(baseUrl + "/auth/registration");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
         driver.findElement(By.name("password")).sendKeys("differentpass");
@@ -264,48 +255,41 @@ public class WeatherAppE2ETest {
         assertThat(hasError).isTrue();
     }
 
-    // ==================== СЦЕНАРИЙ E2E-10 ====================
     @Test
-    void e2e10_registerWithEmptyFields_ShouldShowError() {
+    void e2e08_registerWithEmptyFields_ShouldShowError() {
         driver.get(baseUrl + "/auth/registration");
 
-        // Ждем загрузки формы
         wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username")));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.name("password")));
 
-        // Сохраняем текущий URL
         String currentUrl = driver.getCurrentUrl();
 
-        // Находим и нажимаем кнопку отправки
         WebElement submitButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
         submitButton.click();
 
-        // Небольшая задержка для возможной валидации
         try {
             Thread.sleep(2000);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
 
-        // Проверяем, что мы остались на той же странице (редиректа не произошло)
-        // Или что есть сообщение об ошибке
         boolean samePage = driver.getCurrentUrl().equals(currentUrl);
         boolean hasErrorMessage = driver.findElements(By.xpath("//*[contains(text(), 'must') or contains(text(), 'required') or contains(text(), 'empty')]")).size() > 0;
 
-        // Тест проходит, если мы остались на странице регистрации (значит валидация сработала)
         assertThat(samePage).isTrue();
     }
 
-    // ==================== СЦЕНАРИЙ E2E-11 ====================
     @Test
-    void e2e11_historyDataAfterSearch_ShouldContainSearchedCity() throws InterruptedException {
-        // Создаем пользователя напрямую через репозиторий
+    void e2e09_historyDataAfterSearch_ShouldContainSearchedCity() {
         String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pass123";
 
-        // Регистрация через веб-форму (пробуем еще раз с увеличенными задержками)
         driver.get(baseUrl + "/auth/registration");
-        Thread.sleep(3000);
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
         WebElement usernameInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username")));
         usernameInput.sendKeys(username);
@@ -313,7 +297,6 @@ public class WeatherAppE2ETest {
         WebElement passwordInput = driver.findElement(By.name("password"));
         passwordInput.sendKeys(password);
 
-        // Пробуем найти кнопку разными способами
         WebElement submitBtn;
         try {
             submitBtn = driver.findElement(By.cssSelector("input[type='submit']"));
@@ -321,11 +304,18 @@ public class WeatherAppE2ETest {
             submitBtn = driver.findElement(By.xpath("//button[@type='submit']"));
         }
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", submitBtn);
-        Thread.sleep(5000);
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
-        // Логин
         driver.get(baseUrl + "/auth/login");
-        Thread.sleep(3000);
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
         WebElement loginUsername = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username")));
         loginUsername.sendKeys(username);
@@ -340,13 +330,15 @@ public class WeatherAppE2ETest {
             loginBtn = driver.findElement(By.xpath("//button[@type='submit']"));
         }
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
-        Thread.sleep(5000);
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
-        // Проверяем URL
         String currentUrl = driver.getCurrentUrl();
         System.out.println("URL after login: " + currentUrl);
 
-        // Если логин не удался, выводим причину
         if (currentUrl.contains("error")) {
             String pageSource = driver.getPageSource();
             System.out.println("Login failed. Page contains: " + pageSource.substring(0, Math.min(500, pageSource.length())));
@@ -354,9 +346,9 @@ public class WeatherAppE2ETest {
 
         assertThat(currentUrl).contains("/weather");
     }
-    // ==================== СЦЕНАРИЙ E2E-14 ====================
+
     @Test
-    void e2e14_accessProtectedPagesWithoutAuth_ShouldRedirect() {
+    void e2e10_accessProtectedPagesWithoutAuth_ShouldRedirect() {
         String[] protectedUrls = {"/weather", "/history"};
 
         for (String url : protectedUrls) {
