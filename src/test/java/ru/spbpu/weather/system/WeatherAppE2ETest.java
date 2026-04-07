@@ -182,10 +182,28 @@ public class WeatherAppE2ETest {
         driver.findElement(By.name("password")).sendKeys(password);
         driver.findElement(By.xpath("//form//button | //form//input[@type='submit']")).click();
 
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
         driver.get(baseUrl + "/auth/registration");
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
         wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
         driver.findElement(By.name("password")).sendKeys("differentpass");
         driver.findElement(By.xpath("//form//button | //form//input[@type='submit']")).click();
+
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
         boolean hasError = driver.findElements(By.xpath("//*[contains(text(), 'already exists')]")).size() > 0;
         assertThat(hasError).isTrue();
