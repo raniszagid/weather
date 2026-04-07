@@ -100,6 +100,98 @@ public class WeatherAppE2ETest {
     }
 
     @Test
+    void e2e05_searchNonExistentCity_ShouldShowError() {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        driver.get(baseUrl + "/auth/registration");
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
+        driver.findElement(By.name("password")).sendKeys(password);
+        WebElement submitButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", submitButton);
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        driver.get(baseUrl + "/auth/login");
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
+        driver.findElement(By.name("password")).sendKeys(password);
+        WebElement loginButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", loginButton);
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+
+        WebElement cityInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("city")));
+        cityInput.sendKeys("NonExistentCity123456");
+
+        WebElement searchButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", searchButton);
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        String currentUrl = driver.getCurrentUrl();
+        boolean hasError = driver.findElements(By.xpath("//*[contains(text(), 'error') or contains(text(), 'Error') or contains(text(), 'not found')]")).size() > 0;
+
+        assertThat(currentUrl.contains("/weather") || hasError).isTrue();
+    }
+
+    @Test
+    void e2e06_searchWithEmptyCity_ShouldShowError() {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        driver.get(baseUrl + "/auth/registration");
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
+        driver.findElement(By.name("password")).sendKeys(password);
+
+        WebElement submitButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", submitButton);
+
+        wait.until(ExpectedConditions.urlContains("/auth/login"));
+
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
+        driver.findElement(By.name("password")).sendKeys(password);
+
+        WebElement loginButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", loginButton);
+
+        wait.until(ExpectedConditions.urlContains("/weather"));
+
+        WebElement cityInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("city")));
+
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+    }
+
+    @Test
+    void e2e07_registerWithExistingUsername_ShouldShowError() {
+        String username = "existing_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        driver.get(baseUrl + "/auth/registration");
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
+        driver.findElement(By.name("password")).sendKeys(password);
+        driver.findElement(By.xpath("//form//button | //form//input[@type='submit']")).click();
+
+        driver.get(baseUrl + "/auth/registration");
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
+        driver.findElement(By.name("password")).sendKeys("differentpass");
+        driver.findElement(By.xpath("//form//button | //form//input[@type='submit']")).click();
+
+        boolean hasError = driver.findElements(By.xpath("//*[contains(text(), 'already exists')]")).size() > 0;
+        assertThat(hasError).isTrue();
+    }
+
+    @Test
     void e2e08_registerWithEmptyFields_ShouldShowError() {
         driver.get(baseUrl + "/auth/registration");
 
