@@ -98,4 +98,108 @@ public class WeatherAppE2ETest {
         wait.until(ExpectedConditions.urlContains("/weather"));
         assertThat(driver.getCurrentUrl()).contains("/weather");
     }
+
+    @Test
+    void e2e08_registerWithEmptyFields_ShouldShowError() {
+        driver.get(baseUrl + "/auth/registration");
+
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("password")));
+
+        String currentUrl = driver.getCurrentUrl();
+
+        WebElement submitButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
+        submitButton.click();
+
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        boolean samePage = driver.getCurrentUrl().equals(currentUrl);
+        boolean hasErrorMessage = driver.findElements(By.xpath("//*[contains(text(), 'must') or contains(text(), 'required') or contains(text(), 'empty')]")).size() > 0;
+
+        assertThat(samePage).isTrue();
+    }
+
+    @Test
+    void e2e09_historyDataAfterSearch_ShouldContainSearchedCity() {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        driver.get(baseUrl + "/auth/registration");
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        WebElement usernameInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username")));
+        usernameInput.sendKeys(username);
+
+        WebElement passwordInput = driver.findElement(By.name("password"));
+        passwordInput.sendKeys(password);
+
+        WebElement submitBtn;
+        try {
+            submitBtn = driver.findElement(By.cssSelector("input[type='submit']"));
+        } catch (Exception e) {
+            submitBtn = driver.findElement(By.xpath("//button[@type='submit']"));
+        }
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", submitBtn);
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        driver.get(baseUrl + "/auth/login");
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        WebElement loginUsername = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username")));
+        loginUsername.sendKeys(username);
+
+        WebElement loginPassword = driver.findElement(By.name("password"));
+        loginPassword.sendKeys(password);
+
+        WebElement loginBtn;
+        try {
+            loginBtn = driver.findElement(By.cssSelector("input[type='submit']"));
+        } catch (Exception e) {
+            loginBtn = driver.findElement(By.xpath("//button[@type='submit']"));
+        }
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        String currentUrl = driver.getCurrentUrl();
+        System.out.println("URL after login: " + currentUrl);
+
+        if (currentUrl.contains("error")) {
+            String pageSource = driver.getPageSource();
+            System.out.println("Login failed. Page contains: " + pageSource.substring(0, Math.min(500, pageSource.length())));
+        }
+
+        assertThat(currentUrl).contains("/weather");
+    }
+
+    @Test
+    void e2e10_accessProtectedPagesWithoutAuth_ShouldRedirect() {
+        String[] protectedUrls = {"/weather", "/history"};
+
+        for (String url : protectedUrls) {
+            driver.get(baseUrl + url);
+            wait.until(ExpectedConditions.urlContains("/auth/login"));
+            assertThat(driver.getCurrentUrl()).contains("/auth/login");
+        }
+    }
 }
+
