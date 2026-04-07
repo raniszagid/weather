@@ -83,6 +83,68 @@ public class WeatherAppE2ETest {
     }
 
     @Test
+    void e2e03_unauthenticatedUserSearch_ShouldRedirectToLogin() {
+        driver.get(baseUrl + "/weather");
+
+        wait.until(ExpectedConditions.urlContains("/auth/login"));
+        assertThat(driver.getCurrentUrl()).contains("/auth/login");
+    }
+
+    @Test
+    void e2e04_logout_ShouldRedirectToLogin() {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        driver.get(baseUrl + "/auth/registration");
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        driver.findElement(By.name("username")).sendKeys(username);
+        driver.findElement(By.name("password")).sendKeys(password);
+        WebElement submitBtn = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", submitBtn);
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        driver.get(baseUrl + "/auth/login");
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        driver.findElement(By.name("username")).sendKeys(username);
+        driver.findElement(By.name("password")).sendKeys(password);
+        WebElement loginBtn = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        String currentUrl = driver.getCurrentUrl();
+        System.out.println("URL after login: " + currentUrl);
+        assertThat(currentUrl).contains("/weather");
+
+        driver.get(baseUrl + "/logout");
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        String afterLogoutUrl = driver.getCurrentUrl();
+        System.out.println("URL after logout: " + afterLogoutUrl);
+
+        assertThat(afterLogoutUrl).doesNotContain("/weather");
+    }
+
+    @Test
     void e2e02_loginExistingUser_ShouldRedirectToWeather() {
         driver.get(baseUrl + "/auth/login");
 
