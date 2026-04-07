@@ -201,5 +201,32 @@ public class WeatherAppE2ETest {
             assertThat(driver.getCurrentUrl()).contains("/auth/login");
         }
     }
+@Test
+void e2e07_registerWithExistingUsername_ShouldShowError() {
+    String username = "existing_" + UUID.randomUUID().toString().substring(0, 8);
+    String password = "pass123";
+
+    // 1. Регистрируем пользователя
+    driver.get(baseUrl + "/auth/registration");
+    wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
+    driver.findElement(By.name("password")).sendKeys(password);
+    driver.findElement(By.xpath("//form//button | //form//input[@type='submit']")).click();
+    
+    // Очищаем куки перед второй попыткой
+    driver.manage().deleteAllCookies();
+    
+    // 2. Пытаемся зарегистрироваться с тем же username
+    driver.get(baseUrl + "/auth/registration");
+    wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
+    driver.findElement(By.name("password")).sendKeys("differentpass");
+    driver.findElement(By.xpath("//form//button | //form//input[@type='submit']")).click();
+    
+    // 3. Проверяем сообщение об ошибке
+    boolean hasError = wait.until(ExpectedConditions.presenceOfElementLocated(
+        By.xpath("//*[contains(text(), 'already exists')]")
+    )) != null;
+    
+    assertThat(hasError).isTrue();
+}
 }
 
