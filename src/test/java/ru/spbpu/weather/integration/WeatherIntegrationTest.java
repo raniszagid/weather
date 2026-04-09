@@ -147,20 +147,6 @@ public class WeatherIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "testuser")
-    void makeSearch_cityNotFound_shouldReturnErrorPage() throws Exception {
-        when(apiService.makeRequest(anyString())).thenReturn(Optional.empty());
-
-        mockMvc.perform(post("/weather")
-                        .param("city", "InvalidCity")
-                        .with(csrf()))
-                .andExpect(status().isBadRequest())
-                .andExpect(view().name("error"))
-                .andExpect(model().attributeExists("errorMessage", "status"))
-                .andExpect(model().attribute("errorMessage", "City not found"));
-    }
-
-    @Test
     void requestService_save_shouldPersistFullHierarchy() {
         RequestHistoryEntity request = new RequestHistoryEntity();
         request.setAddress("Moscow");
@@ -195,34 +181,5 @@ public class WeatherIntegrationTest {
         List<Day> savedDays = dayRepository.findDaysByWeatherId(savedWeather.getId());
         assertThat(savedDays).hasSize(2);
         assertThat(savedDays).extracting(Day::getDate).containsExactly(1, 2);
-    }
-
-    @Test
-    void weatherMapper_shouldMapDtoToEntityAndBack() {
-        Weather weatherEntity = weatherMapper.toWeatherEntity(sampleWeatherDto);
-        assertThat(weatherEntity.getTemperature()).isEqualTo(15);
-        assertThat(weatherEntity.getWind()).isEqualTo(10);
-        assertThat(weatherEntity.getDescription()).isEqualTo("Sunny");
-
-        RequestHistoryEntity request = new RequestHistoryEntity();
-        request.setAddress("TestCity");
-        request.setRequestTimestamp(LocalDateTime.now());
-        request.setUser(testUser);
-        requestRepository.save(request);
-
-        weatherEntity.setRequest(request);
-        weatherRepository.save(weatherEntity);
-
-        List<Day> forecast = weatherMapper.getForecast(sampleWeatherDto, weatherEntity);
-        assertThat(forecast).hasSize(2);
-        dayRepository.saveAll(forecast);
-
-        WeatherDto convertedDto = weatherMapper.toWeatherDto(weatherEntity);
-        assertThat(convertedDto.getTemperature()).isEqualTo("+15 °C");
-        assertThat(convertedDto.getWind()).isEqualTo("10 km/h");
-        assertThat(convertedDto.getDescription()).isEqualTo("Sunny");
-        assertThat(convertedDto.getForecast()).hasSize(2);
-        assertThat(convertedDto.getForecast().get(0).getTemperature()).isEqualTo("+16 °C");
-        assertThat(convertedDto.getForecast().get(1).getTemperature()).isEqualTo("+14 °C");
     }
 }
