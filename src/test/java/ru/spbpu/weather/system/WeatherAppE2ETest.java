@@ -91,7 +91,7 @@ public class WeatherAppE2ETest {
     }
 
     @Test
-    void e2e04_logout_ShouldRedirectToLogin() {
+    void e2e04_logout_ShouldNotShowWeather() {
         String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pass123";
 
@@ -162,7 +162,7 @@ public class WeatherAppE2ETest {
     }
 
     @Test
-    void e2e05_searchNonExistentCity_ShouldShowError() {
+    void e2e05_searchNonExistentCity_ShouldStayOnWeather() {
         String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pass123";
 
@@ -208,7 +208,7 @@ public class WeatherAppE2ETest {
     }
 
     @Test
-    void e2e06_searchWithEmptyCity_ShouldShowError() {
+    void e2e06_searchWithEmptyCity_ShouldStayOnWeather() {
         String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pass123";
 
@@ -272,7 +272,7 @@ public class WeatherAppE2ETest {
     }
 
     @Test
-    void e2e08_registerWithEmptyFields_ShouldShowError() {
+    void e2e08_registerWithEmptyFields_ShouldNotPerformRegistration() {
         driver.get(baseUrl + "/auth/registration");
 
         wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username")));
@@ -296,7 +296,7 @@ public class WeatherAppE2ETest {
     }
 
     @Test
-    void e2e09_historyDataAfterSearch_ShouldContainSearchedCity() {
+    void e2e09_registerAndLogin_shouldShowWeather() {
         String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pass123";
 
