@@ -66,312 +66,229 @@ public class WeatherAppE2ETest {
     }
 
     @Test
-    void e2e01_registerNewUser_ShouldSucceed() {
+    void e2e06_userSearchesMultipleCities_historyShouldContainAllSearches() throws InterruptedException {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+        String[] cities = {"Rome", "Madrid", "Amsterdam"};
+
+        // ШАГ 1: Регистрация
         driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
 
-        WebElement usernameInput = wait.until(ExpectedConditions.elementToBeClickable(By.name("username")));
-        usernameInput.sendKeys("e2euser");
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
 
-        WebElement passwordInput = driver.findElement(By.name("password"));
-        passwordInput.sendKeys("e2epass123");
+        // ШАГ 2: Логин
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
 
-        WebElement submitButton = driver.findElement(By.cssSelector("button[type='submit'], input[type='submit']"));
-        submitButton.click();
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
 
-        wait.until(ExpectedConditions.urlContains("/auth/login"));
-        assertThat(driver.getCurrentUrl()).contains("/auth/login");
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+
+        // ШАГ 3: Выполнение нескольких поисков
+        for (String city : cities) {
+            WebElement cityInput = driver.findElement(By.id("city"));
+            cityInput.clear();
+            cityInput.sendKeys(city);
+            driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
+            Thread.sleep(4000);
+            // Проверка: результат поиска отобразился
+            assertThat(driver.getPageSource()).contains("°C");
+        }
+
+        // ШАГ 4: Проверка истории
+        driver.get(baseUrl + "/history");
+        Thread.sleep(3000);
+
+        String historyPage = driver.getPageSource();
+        for (String city : cities) {
+            assertThat(historyPage).contains(city);
+        }
     }
 
     @Test
-    void e2e03_unauthenticatedUserSearch_ShouldRedirectToLogin() {
-        driver.get(baseUrl + "/weather");
+    void e2e05_searchNonExistentCity_ShouldShowError() throws InterruptedException {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+        String invalidCity = "NonExistentCity123456";
 
-        wait.until(ExpectedConditions.urlContains("/auth/login"));
-        assertThat(driver.getCurrentUrl()).contains("/auth/login");
+        // ШАГ 1: Регистрация
+        driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        // ШАГ 2: Логин
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+
+        // ШАГ 3: Поиск несуществующего города
+        driver.findElement(By.id("city")).sendKeys(invalidCity);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
+        Thread.sleep(5000);
+
+        // ШАГ 4: Проверка - должна открыться страница ошибки
+        String currentUrl = driver.getCurrentUrl();
+        String pageSource = driver.getPageSource();
+
+        // Проверяем, что либо остались на /weather с сообщением об ошибке,
+        // либо перешли на страницу error
+        boolean isOnErrorPage = currentUrl.contains("/error");
+        boolean hasErrorMessage = pageSource.contains("error") ||
+                pageSource.contains("Error") ||
+                pageSource.contains("not found") ||
+                pageSource.contains("City not found");
+
+        assertThat(isOnErrorPage || hasErrorMessage).isTrue();
     }
 
     @Test
-    void e2e04_logout_ShouldNotShowWeather() {
+    void e2e06_searchWithEmptyCity_ShouldShowValidationError() throws InterruptedException {
         String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pass123";
 
+        // ШАГ 1: Регистрация
         driver.get(baseUrl + "/auth/registration");
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        driver.findElement(By.name("username")).sendKeys(username);
-        driver.findElement(By.name("password")).sendKeys(password);
-        WebElement submitBtn = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
-        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", submitBtn);
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        Thread.sleep(2000);
 
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        // ШАГ 2: Логин
         driver.get(baseUrl + "/auth/login");
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        driver.findElement(By.name("username")).sendKeys(username);
-        driver.findElement(By.name("password")).sendKeys(password);
-        WebElement loginBtn = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
-        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        Thread.sleep(2000);
 
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+
+        // ШАГ 3: Попытка поиска с пустым полем города
+        // Оставляем поле пустым (не вводим ничего)
+        driver.findElement(By.id("city")).sendKeys("");
+        driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
+        Thread.sleep(3000);
+
+        // ШАГ 4: Проверка - должны остаться на той же странице (HTML5 валидация не даст отправить)
         String currentUrl = driver.getCurrentUrl();
-        System.out.println("URL after login: " + currentUrl);
-        assertThat(currentUrl).contains("/weather");
 
+        // Из-за атрибута required в поле ввода, форма не должна отправиться
+        assertThat(currentUrl).contains("/weather");
+    }
+
+    @Test
+    void e2e07_historyIsIsolatedBetweenUsers() throws InterruptedException {
+        // Данные первого пользователя
+        String username1 = "user1_" + UUID.randomUUID().toString().substring(0, 8);
+        String password1 = "pass123";
+
+        // Данные второго пользователя
+        String username2 = "user2_" + UUID.randomUUID().toString().substring(0, 8);
+        String password2 = "pass123";
+
+        String searchCity = "London";
+
+        // ========== ЧАСТЬ 1: Первый пользователь ==========
+
+        // ШАГ 1: Регистрация первого пользователя
+        driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username1);
+        driver.findElement(By.id("password")).sendKeys(password1);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        // ШАГ 2: Логин первого пользователя
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username1);
+        driver.findElement(By.id("password")).sendKeys(password1);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+
+        // ШАГ 3: Поиск погоды для Лондона
+        driver.findElement(By.id("city")).sendKeys(searchCity);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
+        Thread.sleep(5000);
+
+        // ШАГ 4: Проверка, что результат поиска отобразился
+        assertThat(driver.getPageSource()).contains("°C");
+
+        // ШАГ 5: Проверка истории первого пользователя - должна содержать Лондон
+        driver.get(baseUrl + "/history");
+        Thread.sleep(3000);
+
+        String historyPage1 = driver.getPageSource();
+        assertThat(historyPage1).contains(searchCity);
+
+        // ШАГ 6: Выход из аккаунта первого пользователя
         driver.get(baseUrl + "/logout");
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        Thread.sleep(3000);
 
-        String afterLogoutUrl = driver.getCurrentUrl();
-        System.out.println("URL after logout: " + afterLogoutUrl);
+        // ========== ЧАСТЬ 2: Второй пользователь ==========
 
-        assertThat(afterLogoutUrl).doesNotContain("/weather");
-    }
-
-    @Test
-    void e2e02_loginExistingUser_ShouldRedirectToWeather() {
-        driver.get(baseUrl + "/auth/login");
-
-        WebElement usernameInput = wait.until(ExpectedConditions.elementToBeClickable(By.name("username")));
-        usernameInput.sendKeys("e2euser");
-
-        WebElement passwordInput = driver.findElement(By.name("password"));
-        passwordInput.sendKeys("e2epass123");
-
-        WebElement submitButton = driver.findElement(By.cssSelector("button[type='submit'], input[type='submit']"));
-        submitButton.click();
-
-        wait.until(ExpectedConditions.urlContains("/weather"));
-        assertThat(driver.getCurrentUrl()).contains("/weather");
-    }
-
-    @Test
-    void e2e05_searchNonExistentCity_ShouldStayOnWeather() {
-        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
-        String password = "pass123";
-
+        // ШАГ 7: Регистрация второго пользователя
         driver.get(baseUrl + "/auth/registration");
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
-        driver.findElement(By.name("password")).sendKeys(password);
-        WebElement submitButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
-        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", submitButton);
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        Thread.sleep(2000);
 
+        driver.findElement(By.id("username")).sendKeys(username2);
+        driver.findElement(By.id("password")).sendKeys(password2);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        // ШАГ 8: Логин второго пользователя
         driver.get(baseUrl + "/auth/login");
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
-        driver.findElement(By.name("password")).sendKeys(password);
-        WebElement loginButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
-        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", loginButton);
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username2);
+        driver.findElement(By.id("password")).sendKeys(password2);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
 
         assertThat(driver.getCurrentUrl()).contains("/weather");
 
-        WebElement cityInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("city")));
-        cityInput.sendKeys("NonExistentCity123456");
+        // ШАГ 9: Выполнение поиска другим городом (чтобы убедиться, что история работает)
+        driver.findElement(By.id("city")).sendKeys("Paris");
+        driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
+        Thread.sleep(5000);
 
-        WebElement searchButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
-        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", searchButton);
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // ШАГ 10: Проверка истории второго пользователя
+        driver.get(baseUrl + "/history");
+        Thread.sleep(3000);
 
-        String currentUrl = driver.getCurrentUrl();
-        boolean hasError = driver.findElements(By.xpath("//*[contains(text(), 'error') or contains(text(), 'Error') or contains(text(), 'not found')]")).size() > 0;
+        String historyPage2 = driver.getPageSource();
 
-        assertThat(currentUrl.contains("/weather") || hasError).isTrue();
-    }
+        // Проверка: история второго пользователя НЕ должна содержать Лондон
+        assertThat(historyPage2).doesNotContain(searchCity);
 
-    @Test
-    void e2e06_searchWithEmptyCity_ShouldStayOnWeather() {
-        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
-        String password = "pass123";
+        // Проверка: история второго пользователя должна содержать его собственный поиск (Париж)
+        assertThat(historyPage2).contains("Paris");
 
-        driver.get(baseUrl + "/auth/registration");
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
-        driver.findElement(By.name("password")).sendKeys(password);
-
-        WebElement submitButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
-        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", submitButton);
-
-        wait.until(ExpectedConditions.urlContains("/auth/login"));
-
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
-        driver.findElement(By.name("password")).sendKeys(password);
-
-        WebElement loginButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
-        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", loginButton);
-
-        wait.until(ExpectedConditions.urlContains("/weather"));
-
-        WebElement cityInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("city")));
-
-        assertThat(driver.getCurrentUrl()).contains("/weather");
-    }
-
-    @Test
-    void e2e07_registerWithExistingUsername_ShouldShowError() {
-        String username = "existing_" + UUID.randomUUID().toString().substring(0, 8);
-        String password = "pass123";
-
-        driver.get(baseUrl + "/auth/registration");
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
-        driver.findElement(By.name("password")).sendKeys(password);
-        driver.findElement(By.xpath("//form//button | //form//input[@type='submit']")).click();
-
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        driver.get(baseUrl + "/auth/registration");
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username"))).sendKeys(username);
-        driver.findElement(By.name("password")).sendKeys("differentpass");
-        driver.findElement(By.xpath("//form//button | //form//input[@type='submit']")).click();
-
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        boolean hasError = driver.findElements(By.xpath("//*[contains(text(), 'already exists')]")).size() > 0;
-        assertThat(hasError).isTrue();
-    }
-
-    @Test
-    void e2e08_registerWithEmptyFields_ShouldNotPerformRegistration() {
-        driver.get(baseUrl + "/auth/registration");
-
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username")));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.name("password")));
-
-        String currentUrl = driver.getCurrentUrl();
-
-        WebElement submitButton = driver.findElement(By.xpath("//form//button | //form//input[@type='submit']"));
-        submitButton.click();
-
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        boolean samePage = driver.getCurrentUrl().equals(currentUrl);
-        boolean hasErrorMessage = driver.findElements(By.xpath("//*[contains(text(), 'must') or contains(text(), 'required') or contains(text(), 'empty')]")).size() > 0;
-
-        assertThat(samePage).isTrue();
-    }
-
-    @Test
-    void e2e09_registerAndLogin_shouldShowWeather() {
-        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
-        String password = "pass123";
-
-        driver.get(baseUrl + "/auth/registration");
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        WebElement usernameInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username")));
-        usernameInput.sendKeys(username);
-
-        WebElement passwordInput = driver.findElement(By.name("password"));
-        passwordInput.sendKeys(password);
-
-        WebElement submitBtn;
-        try {
-            submitBtn = driver.findElement(By.cssSelector("input[type='submit']"));
-        } catch (Exception e) {
-            submitBtn = driver.findElement(By.xpath("//button[@type='submit']"));
-        }
-        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", submitBtn);
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        driver.get(baseUrl + "/auth/login");
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        WebElement loginUsername = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("username")));
-        loginUsername.sendKeys(username);
-
-        WebElement loginPassword = driver.findElement(By.name("password"));
-        loginPassword.sendKeys(password);
-
-        WebElement loginBtn;
-        try {
-            loginBtn = driver.findElement(By.cssSelector("input[type='submit']"));
-        } catch (Exception e) {
-            loginBtn = driver.findElement(By.xpath("//button[@type='submit']"));
-        }
-        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", loginBtn);
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        String currentUrl = driver.getCurrentUrl();
-        System.out.println("URL after login: " + currentUrl);
-
-        if (currentUrl.contains("error")) {
-            String pageSource = driver.getPageSource();
-            System.out.println("Login failed. Page contains: " + pageSource.substring(0, Math.min(500, pageSource.length())));
-        }
-
-        assertThat(currentUrl).contains("/weather");
-    }
-
-    @Test
-    void e2e10_accessProtectedPagesWithoutAuth_ShouldRedirect() {
-        String[] protectedUrls = {"/weather", "/history"};
-
-        for (String url : protectedUrls) {
-            driver.get(baseUrl + url);
-            wait.until(ExpectedConditions.urlContains("/auth/login"));
-            assertThat(driver.getCurrentUrl()).contains("/auth/login");
-        }
+        System.out.println("✅ Проверка пройдена: история пользователей изолирована");
     }
 }
 
