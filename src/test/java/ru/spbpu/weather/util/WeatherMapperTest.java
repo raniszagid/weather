@@ -3,6 +3,11 @@ package ru.spbpu.weather.util;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.spbpu.weather.dto.DayDto;
@@ -18,7 +23,10 @@ import ru.spbpu.weather.util.WeatherMapper;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
@@ -39,45 +47,24 @@ class WeatherMapperTest {
         weatherMapper = new WeatherMapper(weatherRepository, dayRepository);
     }
 
-    @Test
-    void toWeatherEntity_ShouldParsePositiveTemperature() {
+    @ParameterizedTest
+    @CsvSource({
+            "'+15 °C', 15",
+            "'-10 °C', -10",
+            "'0 °C', 0"
+    })
+    void toWeatherEntity_ShouldParseTemperature(String temperature, int expectedTemperature) {
         WeatherDto dto = WeatherDto.builder()
-                .temperature("+15 °C")
-                .wind("20 km/h")
+                .temperature(temperature)
+                .wind("10 km/h")
                 .description("Sunny")
                 .build();
 
         Weather result = weatherMapper.toWeatherEntity(dto);
 
-        assertEquals(15, result.getTemperature());
-        assertEquals(20, result.getWind());
+        assertEquals(expectedTemperature, result.getTemperature());
+        assertEquals(10, result.getWind());
         assertEquals("Sunny", result.getDescription());
-    }
-
-    @Test
-    void toWeatherEntity_ShouldParseNegativeTemperature() {
-        WeatherDto dto = WeatherDto.builder()
-                .temperature("-10 °C")
-                .wind("5 km/h")
-                .build();
-
-        Weather result = weatherMapper.toWeatherEntity(dto);
-
-        assertEquals(-10, result.getTemperature());
-        assertEquals(5, result.getWind());
-    }
-
-    @Test
-    void toWeatherEntity_ShouldParseTemperatureWithoutSign() {
-        WeatherDto dto = WeatherDto.builder()
-                .temperature("0 °C")
-                .wind("0 km/h")
-                .build();
-
-        Weather result = weatherMapper.toWeatherEntity(dto);
-
-        assertEquals(0, result.getTemperature());
-        assertEquals(0, result.getWind());
     }
 
     @Test
@@ -87,7 +74,7 @@ class WeatherMapperTest {
                 .wind("10 km/h")
                 .build();
 
-        assertThrows(NumberFormatException.class, () ->
+        assertThrows(IllegalArgumentException.class, () ->
                 weatherMapper.toWeatherEntity(dto));
     }
 
@@ -98,7 +85,7 @@ class WeatherMapperTest {
                 .wind("invalid")
                 .build();
 
-        assertThrows(NumberFormatException.class, () ->
+        assertThrows(IllegalArgumentException.class, () ->
                 weatherMapper.toWeatherEntity(dto));
     }
 
@@ -147,10 +134,18 @@ class WeatherMapperTest {
         assertEquals(1, result.get(0).getDate());
     }
 
-    @Test
-    void getForecast_WithEmptyForecast_ShouldReturnEmptyList() {
+    private static Stream<Arguments> source() {
+        return Stream.of(
+                Arguments.of(Optional.of(Collections.emptyList())),
+                Arguments.of(Optional.ofNullable(null))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("source")
+    void getForecast_WithEmptyForecast_ShouldReturnEmptyList(Optional<List<DayDto>> listOpt) {
         WeatherDto weatherDto = WeatherDto.builder()
-                .forecast(Collections.emptyList())
+                .forecast(listOpt.orElse(null))
                 .build();
         Weather weather = new Weather();
 
@@ -384,4 +379,78 @@ class WeatherMapperTest {
         assertEquals(-12, entity.getTemperature());
         assertEquals(20, entity.getWind());
     }
+
+    // 1 to Entity from DTO with temperature without space
+    // 2         int temperatureNumber = Integer.parseInt(temperatureArray[0]);  array invalid first value
+    // 3 dt getWind without sace AND invalid value
+    // 4 dto get description is null
+
+    @Test
+    void toWeatherEntity_WhenTemperatureWithoutSpace_ShouldParseCorrectly() {
+        WeatherDto dto = WeatherDto.builder()
+                .temperature("15°C")
+                .wind("20 km/h")
+                .description("Sunny")
+                .forecast(Collections.emptyList())
+                .build();
+
+
+        assertThrows(IllegalArgumentException.class, () -> weatherMapper.toWeatherEntity(dto));
+    }
+
+    @Test
+    void toWeatherEntity_WhenTemperatureArrayHasInvalidFirstValue_ShouldThrowNumberFormatException() {
+        WeatherDto dto = WeatherDto.builder()
+                .temperature("invalid °C")
+                .wind("20 km/h")
+                .description("Test")
+                .forecast(Collections.emptyList())
+                .build();
+
+        assertThatThrownBy(() -> weatherMapper.toWeatherEntity(dto))
+                .isInstanceOf(NumberFormatException.class);
+    }
+
+    @Test
+    void toWeatherEntity_WhenWindWithoutSpace_ShouldParseCorrectly() {
+        WeatherDto dto = WeatherDto.builder()
+                .temperature("20 °C")
+                .wind("15km/h")
+                .description("Windy")
+                .forecast(Collections.emptyList())
+                .build();
+
+        assertThrows(IllegalArgumentException.class, () -> weatherMapper.toWeatherEntity(dto));
+    }
+
+    @Test
+    void toWeatherEntity_WhenWindHasInvalidValue_ShouldThrowNumberFormatException() {
+        WeatherDto dto = WeatherDto.builder()
+                .temperature("20 °C")
+                .wind("invalid km/h")
+                .description("Test")
+                .forecast(Collections.emptyList())
+                .build();
+
+        assertThatThrownBy(() -> weatherMapper.toWeatherEntity(dto))
+                .isInstanceOf(NumberFormatException.class);
+    }
+
+    @Test
+    void toWeatherEntity_WhenDescriptionIsNull_ShouldSetDescriptionToNull() {
+        WeatherDto dto = WeatherDto.builder()
+                .temperature("20 °C")
+                .wind("15 km/h")
+                .description(null)
+                .forecast(Collections.emptyList())
+                .build();
+
+        Weather result = weatherMapper.toWeatherEntity(dto);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getTemperature()).isEqualTo(20);
+        assertThat(result.getWind()).isEqualTo(15);
+        assertThat(result.getDescription()).isNull();
+    }
+
 }

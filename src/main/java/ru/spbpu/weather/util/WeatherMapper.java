@@ -1,5 +1,6 @@
 package ru.spbpu.weather.util;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -35,8 +36,10 @@ public class WeatherMapper {
 
     public Weather toWeatherEntity(WeatherDto dto) {
         String[] temperatureArray = dto.getTemperature().split(" ");
+        if (temperatureArray.length < 2) throw new IllegalArgumentException();
         int temperatureNumber = Integer.parseInt(temperatureArray[0]);
         String[] windArray = dto.getWind().split(" ");
+        if (windArray.length < 2) throw new IllegalArgumentException();
         int windNumber = Integer.parseInt(windArray[0]);
         Weather weather = new Weather();
         weather.setTemperature(temperatureNumber);
