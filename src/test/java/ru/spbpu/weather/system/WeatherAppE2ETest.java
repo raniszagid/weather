@@ -15,6 +15,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,12 +67,11 @@ public class WeatherAppE2ETest {
     }
 
     @Test
-    void e2e06_userSearchesMultipleCities_historyShouldContainAllSearches() throws InterruptedException {
+    void e2e01_baseSuccessfulScenario() throws InterruptedException {
         String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pass123";
-        String[] cities = {"Rome", "Madrid", "Amsterdam"};
+        String[] cities = {"Paris", "Madrid", "London"};
 
-        // ШАГ 1: Регистрация
         driver.get(baseUrl + "/auth/registration");
         Thread.sleep(2000);
 
@@ -80,7 +80,6 @@ public class WeatherAppE2ETest {
         driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
         Thread.sleep(3000);
 
-        // ШАГ 2: Логин
         driver.get(baseUrl + "/auth/login");
         Thread.sleep(2000);
 
@@ -91,18 +90,15 @@ public class WeatherAppE2ETest {
 
         assertThat(driver.getCurrentUrl()).contains("/weather");
 
-        // ШАГ 3: Выполнение нескольких поисков
         for (String city : cities) {
             WebElement cityInput = driver.findElement(By.id("city"));
             cityInput.clear();
             cityInput.sendKeys(city);
             driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
             Thread.sleep(4000);
-            // Проверка: результат поиска отобразился
             assertThat(driver.getPageSource()).contains("°C");
         }
 
-        // ШАГ 4: Проверка истории
         driver.get(baseUrl + "/history");
         Thread.sleep(3000);
 
@@ -113,12 +109,11 @@ public class WeatherAppE2ETest {
     }
 
     @Test
-    void e2e05_searchNonExistentCity_ShouldShowError() throws InterruptedException {
+    void e2e02_searchNonExistentCity_ShouldShowError() throws InterruptedException {
         String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pass123";
         String invalidCity = "NonExistentCity123456";
 
-        // ШАГ 1: Регистрация
         driver.get(baseUrl + "/auth/registration");
         Thread.sleep(2000);
 
@@ -127,7 +122,6 @@ public class WeatherAppE2ETest {
         driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
         Thread.sleep(3000);
 
-        // ШАГ 2: Логин
         driver.get(baseUrl + "/auth/login");
         Thread.sleep(2000);
 
@@ -138,17 +132,13 @@ public class WeatherAppE2ETest {
 
         assertThat(driver.getCurrentUrl()).contains("/weather");
 
-        // ШАГ 3: Поиск несуществующего города
         driver.findElement(By.id("city")).sendKeys(invalidCity);
         driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
         Thread.sleep(5000);
 
-        // ШАГ 4: Проверка - должна открыться страница ошибки
         String currentUrl = driver.getCurrentUrl();
         String pageSource = driver.getPageSource();
 
-        // Проверяем, что либо остались на /weather с сообщением об ошибке,
-        // либо перешли на страницу error
         boolean isOnErrorPage = currentUrl.contains("/error");
         boolean hasErrorMessage = pageSource.contains("error") ||
                 pageSource.contains("Error") ||
@@ -159,11 +149,10 @@ public class WeatherAppE2ETest {
     }
 
     @Test
-    void e2e06_searchWithEmptyCity_ShouldShowValidationError() throws InterruptedException {
+    void e2e03_searchWithEmptyCity_ShouldDoNothing() throws InterruptedException {
         String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
         String password = "pass123";
 
-        // ШАГ 1: Регистрация
         driver.get(baseUrl + "/auth/registration");
         Thread.sleep(2000);
 
@@ -172,7 +161,6 @@ public class WeatherAppE2ETest {
         driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
         Thread.sleep(3000);
 
-        // ШАГ 2: Логин
         driver.get(baseUrl + "/auth/login");
         Thread.sleep(2000);
 
@@ -183,34 +171,43 @@ public class WeatherAppE2ETest {
 
         assertThat(driver.getCurrentUrl()).contains("/weather");
 
-        // ШАГ 3: Попытка поиска с пустым полем города
-        // Оставляем поле пустым (не вводим ничего)
+        driver.get(baseUrl + "/history");
+        Thread.sleep(3000);
+
+        String historyPage = driver.getPageSource();
+        boolean isEmptyInitially = historyPage.contains("No search history yet");
+        assertThat(isEmptyInitially).isTrue();
+        System.out.println("Изначально история пуста");
+
+        driver.get(baseUrl + "/weather");
+        Thread.sleep(2000);
+
         driver.findElement(By.id("city")).sendKeys("");
         driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
         Thread.sleep(3000);
 
-        // ШАГ 4: Проверка - должны остаться на той же странице (HTML5 валидация не даст отправить)
         String currentUrl = driver.getCurrentUrl();
-
-        // Из-за атрибута required в поле ввода, форма не должна отправиться
         assertThat(currentUrl).contains("/weather");
+        System.out.println("После попытки поиска с пустым полем остались на /weather");
+
+        driver.get(baseUrl + "/history");
+        Thread.sleep(3000);
+
+        historyPage = driver.getPageSource();
+        boolean isEmptyAfterAttempt = historyPage.contains("No search history yet");
+        assertThat(isEmptyAfterAttempt).isTrue();
     }
 
     @Test
-    void e2e07_historyIsIsolatedBetweenUsers() throws InterruptedException {
-        // Данные первого пользователя
+    void e2e04_historyIsIsolatedBetweenUsers() throws InterruptedException {
         String username1 = "user1_" + UUID.randomUUID().toString().substring(0, 8);
         String password1 = "pass123";
 
-        // Данные второго пользователя
         String username2 = "user2_" + UUID.randomUUID().toString().substring(0, 8);
         String password2 = "pass123";
 
         String searchCity = "London";
 
-        // ========== ЧАСТЬ 1: Первый пользователь ==========
-
-        // ШАГ 1: Регистрация первого пользователя
         driver.get(baseUrl + "/auth/registration");
         Thread.sleep(2000);
 
@@ -219,7 +216,6 @@ public class WeatherAppE2ETest {
         driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
         Thread.sleep(3000);
 
-        // ШАГ 2: Логин первого пользователя
         driver.get(baseUrl + "/auth/login");
         Thread.sleep(2000);
 
@@ -230,28 +226,46 @@ public class WeatherAppE2ETest {
 
         assertThat(driver.getCurrentUrl()).contains("/weather");
 
-        // ШАГ 3: Поиск погоды для Лондона
         driver.findElement(By.id("city")).sendKeys(searchCity);
         driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
         Thread.sleep(5000);
 
-        // ШАГ 4: Проверка, что результат поиска отобразился
         assertThat(driver.getPageSource()).contains("°C");
 
-        // ШАГ 5: Проверка истории первого пользователя - должна содержать Лондон
         driver.get(baseUrl + "/history");
         Thread.sleep(3000);
 
-        String historyPage1 = driver.getPageSource();
-        assertThat(historyPage1).contains(searchCity);
+        List<WebElement> historyHeaders = driver.findElements(By.cssSelector(".history-item h3"));
+        boolean firstUserHasLondon = false;
+        for (WebElement header : historyHeaders) {
+            if (header.getText().contains(searchCity)) {
+                firstUserHasLondon = true;
+                break;
+            }
+        }
+        assertThat(firstUserHasLondon).isTrue();
+        System.out.println("Первый пользователь видит Лондон в истории");
 
-        // ШАГ 6: Выход из аккаунта первого пользователя
-        driver.get(baseUrl + "/logout");
+        driver.findElement(By.cssSelector(".user-menu")).click();
+        Thread.sleep(1000);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Logout']")).click();
         Thread.sleep(3000);
 
-        // ========== ЧАСТЬ 2: Второй пользователь ==========
+        driver.manage().deleteAllCookies();
+        Thread.sleep(1000);
 
-        // ШАГ 7: Регистрация второго пользователя
+        driver.get(baseUrl + "/weather");
+        Thread.sleep(3000);
+
+        String currentUrl = driver.getCurrentUrl();
+        System.out.println("URL after logout and trying to access /weather: " + currentUrl);
+
+        assertThat(currentUrl).contains("/auth/login");
+        System.out.println("✅ Первый пользователь вышел из системы");
+
+        driver.manage().deleteAllCookies();
+        Thread.sleep(1000);
+
         driver.get(baseUrl + "/auth/registration");
         Thread.sleep(2000);
 
@@ -260,7 +274,6 @@ public class WeatherAppE2ETest {
         driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
         Thread.sleep(3000);
 
-        // ШАГ 8: Логин второго пользователя
         driver.get(baseUrl + "/auth/login");
         Thread.sleep(2000);
 
@@ -271,24 +284,486 @@ public class WeatherAppE2ETest {
 
         assertThat(driver.getCurrentUrl()).contains("/weather");
 
-        // ШАГ 9: Выполнение поиска другим городом (чтобы убедиться, что история работает)
         driver.findElement(By.id("city")).sendKeys("Paris");
         driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
         Thread.sleep(5000);
 
-        // ШАГ 10: Проверка истории второго пользователя
         driver.get(baseUrl + "/history");
         Thread.sleep(3000);
 
-        String historyPage2 = driver.getPageSource();
+        historyHeaders = driver.findElements(By.cssSelector(".history-item h3"));
+        boolean secondUserHasLondon = false;
+        for (WebElement header : historyHeaders) {
+            if (header.getText().contains(searchCity)) {
+                secondUserHasLondon = true;
+                System.out.println("Found London in header: " + header.getText());
+                break;
+            }
+        }
 
-        // Проверка: история второго пользователя НЕ должна содержать Лондон
-        assertThat(historyPage2).doesNotContain(searchCity);
+        assertThat(secondUserHasLondon).isFalse();
+        System.out.println("История второго пользователя НЕ содержит Лондон");
 
-        // Проверка: история второго пользователя должна содержать его собственный поиск (Париж)
-        assertThat(historyPage2).contains("Paris");
+        boolean secondUserHasParis = false;
+        for (WebElement header : historyHeaders) {
+            if (header.getText().contains("Paris")) {
+                secondUserHasParis = true;
+                break;
+            }
+        }
+        assertThat(secondUserHasParis).isTrue();
+        System.out.println("История второго пользователя содержит Париж");
+    }
 
-        System.out.println("✅ Проверка пройдена: история пользователей изолирована");
+    @Test
+    void e2e05_historySorting() throws InterruptedException {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+        String[] cities = {"Berlin", "London", "Paris"};
+
+        driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+
+        for (String city : cities) {
+            driver.findElement(By.id("city")).clear();
+            driver.findElement(By.id("city")).sendKeys(city);
+            driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
+            Thread.sleep(4000);
+        }
+
+        driver.get(baseUrl + "/history?sortBy=city&order=asc");
+        Thread.sleep(3000);
+
+        java.util.List<String> ascOrder = getCityOrderFromHistory();
+        System.out.println("Ascending order (A-Z): " + ascOrder);
+        assertThat(ascOrder.get(1)).isEqualTo("London");
+        assertThat(ascOrder.get(0)).isEqualTo("Berlin");
+        assertThat(ascOrder.get(2)).isEqualTo("Paris");
+
+        driver.get(baseUrl + "/history?sortBy=city&order=desc");
+        Thread.sleep(3000);
+
+        java.util.List<String> descOrder = getCityOrderFromHistory();
+        System.out.println("Descending order (Z-A): " + descOrder);
+        assertThat(descOrder.get(0)).isEqualTo("Paris");
+        assertThat(descOrder.get(2)).isEqualTo("Berlin");
+        assertThat(descOrder.get(1)).isEqualTo("London");
+    }
+
+    private List<String> getCityOrderFromHistory() {
+        java.util.List<String> order = new java.util.ArrayList<>();
+        java.util.List<WebElement> historyItems = driver.findElements(By.cssSelector(".history-item h3"));
+        String[] expectedCities = {"Berlin", "London", "Paris"};
+
+        for (WebElement item : historyItems) {
+            String text = item.getText();
+            for (String city : expectedCities) {
+                if (text.contains(city)) {
+                    order.add(city);
+                    break;
+                }
+            }
+        }
+        return order;
+    }
+
+    @Test
+    void e2e06_historySearch_ShouldFilterByCityPrefix() throws InterruptedException {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+
+        String[] cities = {"London", "Paris", "Berlin", "Madrid", "Moscow"};
+        for (String city : cities) {
+            driver.findElement(By.id("city")).clear();
+            driver.findElement(By.id("city")).sendKeys(city);
+            driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
+            Thread.sleep(3000);
+        }
+
+        driver.get(baseUrl + "/history?search=L");
+        Thread.sleep(3000);
+
+        String pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("London");
+
+        driver.get(baseUrl + "/history?search=M");
+        Thread.sleep(3000);
+
+        pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("Madrid");
+        assertThat(pageSource).contains("Moscow");
+
+        driver.get(baseUrl + "/history?search=Lo");
+        Thread.sleep(3000);
+
+        pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("London");
+
+        driver.get(baseUrl + "/history?search=Zz");
+        Thread.sleep(3000);
+
+        pageSource = driver.getPageSource();
+        boolean hasNoResults = pageSource.contains("No search history yet") ||
+                (pageSource.contains("Showing results for") &&
+                        !pageSource.contains("London") &&
+                        !pageSource.contains("Paris"));
+        assertThat(hasNoResults).isTrue();
+    }
+
+    @Test
+    void e2e07_historyPagination() throws InterruptedException {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+
+        for (int i = 0; i < 4; i++) {
+            driver.findElement(By.id("city")).clear();
+            driver.findElement(By.id("city")).sendKeys("Moscow");
+            driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
+            Thread.sleep(2000);
+        }
+        driver.get(baseUrl + "/history");
+        Thread.sleep(3000);
+
+        java.util.List<WebElement> historyItems = driver.findElements(By.cssSelector(".history-item"));
+        assertThat(historyItems.size()).isEqualTo(3);
+
+        List<WebElement> nextButtons = driver.findElements(By.xpath("//a[contains(text(), 'Next')]"));
+        assertThat(nextButtons.isEmpty()).isFalse();
+
+        driver.get(baseUrl + "/history?page=2");
+        Thread.sleep(3000);
+
+        historyItems = driver.findElements(By.cssSelector(".history-item"));
+        assertThat(historyItems.size()).isEqualTo(1);
+
+        String pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("Showing");
+        assertThat(pageSource).contains("of 4 records");
+
+        driver.get(baseUrl + "/history?page=1");
+        Thread.sleep(3000);
+
+        historyItems = driver.findElements(By.cssSelector(".history-item"));
+        assertThat(historyItems.size()).isEqualTo(3);
+
+        driver.get(baseUrl + "/history?page=2");
+        Thread.sleep(3000);
+
+        List<WebElement> prevButtons = driver.findElements(By.xpath("//a[contains(text(), 'Previous')]"));
+        assertThat(prevButtons.isEmpty()).isFalse();
+
+        if (!prevButtons.isEmpty()) {
+            prevButtons.get(0).click();
+            Thread.sleep(3000);
+            historyItems = driver.findElements(By.cssSelector(".history-item"));
+            assertThat(historyItems.size()).isEqualTo(3);
+        }
+
+        List<WebElement> lastButtons = driver.findElements(By.xpath("//a[contains(text(), 'Last')]"));
+        if (!lastButtons.isEmpty()) {
+            lastButtons.get(0).click();
+            Thread.sleep(3000);
+            historyItems = driver.findElements(By.cssSelector(".history-item"));
+            assertThat(historyItems.size()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void e2e08_windConverter() throws InterruptedException {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        driver.get(baseUrl + "/wind-converter");
+        Thread.sleep(2000);
+
+        assertThat(driver.getPageSource()).contains("Wind Speed Converter");
+
+        driver.findElement(By.name("kmh")).clear();
+        driver.findElement(By.name("kmh")).sendKeys("36");
+        driver.findElement(By.cssSelector("form[action*='/to-ms'] button")).click();
+        Thread.sleep(2000);
+
+        String pageSource = driver.getPageSource();
+        boolean hasResult = pageSource.contains("36.0 km/h = 10.0 m/s") ||
+                pageSource.contains("36 km/h = 10.0 m/s") ||
+                pageSource.contains("36.0 km/h = 10 m/s") ||
+                pageSource.contains("36 km/h = 10 m/s");
+        assertThat(hasResult).isTrue();
+
+        driver.findElement(By.name("ms")).clear();
+        driver.findElement(By.name("ms")).sendKeys("10");
+        driver.findElement(By.cssSelector("form[action*='/to-kmh'] button")).click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        hasResult = pageSource.contains("10.0 m/s = 36.0 km/h") ||
+                pageSource.contains("10 m/s = 36.0 km/h") ||
+                pageSource.contains("10.0 m/s = 36 km/h") ||
+                pageSource.contains("10 m/s = 36 km/h");
+        assertThat(hasResult).isTrue();
+
+        driver.findElement(By.name("kmh")).clear();
+        driver.findElement(By.name("kmh")).sendKeys("-100");
+        driver.findElement(By.cssSelector("form[action*='/to-ms'] button")).click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("введите корректное число");
+    }
+
+    @Test
+    void e2e09_temperatureConverter() throws InterruptedException {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        driver.get(baseUrl + "/temp-converter");
+        Thread.sleep(2000);
+
+        assertThat(driver.getPageSource()).contains("Temperature Converter");
+
+        WebElement celsiusInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("celsius")));
+        celsiusInput.clear();
+        celsiusInput.sendKeys("100");
+
+        WebElement convertToFahrenheitBtn = driver.findElement(By.cssSelector("form[action*='/to-fahrenheit'] button"));
+        convertToFahrenheitBtn.click();
+        Thread.sleep(2000);
+
+        String pageSource = driver.getPageSource();
+        boolean hasResult = pageSource.contains("100.0 °C = 212.0 °F") ||
+                pageSource.contains("100 °C = 212 °F") ||
+                pageSource.contains("100.0 °C = 212 °F") ||
+                pageSource.contains("100 °C = 212.0 °F");
+        assertThat(hasResult).isTrue();
+
+        WebElement fahrenheitInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("fahrenheit")));
+        fahrenheitInput.clear();
+        fahrenheitInput.sendKeys("212");
+
+        WebElement convertToCelsiusBtn = driver.findElement(By.cssSelector("form[action*='/to-celsius'] button"));
+        convertToCelsiusBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        hasResult = pageSource.contains("212.0 °F = 100.0 °C") ||
+                pageSource.contains("212 °F = 100 °C") ||
+                pageSource.contains("212.0 °F = 100 °C") ||
+                pageSource.contains("212 °F = 100.0 °C");
+        assertThat(hasResult).isTrue();
+
+
+        celsiusInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("celsius")));
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
+                "arguments[0].setAttribute('type', 'number');", celsiusInput);
+        celsiusInput.clear();
+        celsiusInput.sendKeys("0");
+
+        convertToFahrenheitBtn = driver.findElement(By.cssSelector("form[action*='/to-fahrenheit'] button"));
+        convertToFahrenheitBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        hasResult = pageSource.contains("0.0 °C = 32.0 °F") ||
+                pageSource.contains("0 °C = 32 °F");
+        assertThat(hasResult).isTrue();
+    }
+
+    @Test
+    void e2e10_weatherDictionary_ShouldSearchByPrefix() throws InterruptedException {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+
+        driver.get(baseUrl + "/dictionary");
+        Thread.sleep(2000);
+
+        String pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("Weather Dictionary");
+        assertThat(pageSource).contains("English-Russian weather terms");
+
+        List<WebElement> tableRows = driver.findElements(By.cssSelector(".dictionary-table tbody tr"));
+        assertThat(tableRows.isEmpty()).isFalse();
+        System.out.println("Найдено терминов на странице: " + tableRows.size());
+
+        WebElement searchInput = driver.findElement(By.name("search"));
+        searchInput.clear();
+        searchInput.sendKeys("sun");
+
+        WebElement searchBtn = driver.findElement(By.cssSelector(".search-btn:not(.clear-btn)"));
+        searchBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("sunny");
+        assertThat(pageSource).contains("солнечно");
+
+        tableRows = driver.findElements(By.cssSelector(".dictionary-table tbody tr"));
+        assertThat(tableRows.size()).isEqualTo(1);
+        System.out.println("Поиск 'sun' нашел " + tableRows.size() + " термин(ов)");
+
+        searchInput = driver.findElement(By.name("search"));
+        searchInput.clear();
+        searchInput.sendKeys("cl");
+
+        searchBtn = driver.findElement(By.cssSelector(".search-btn:not(.clear-btn)"));
+        searchBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        tableRows = driver.findElements(By.cssSelector(".dictionary-table tbody tr"));
+        assertThat(tableRows.size()).isGreaterThan(0);
+
+        boolean hasCloudy = pageSource.contains("cloudy");
+        boolean hasClear = pageSource.contains("clear");
+        assertThat(hasCloudy || hasClear).isTrue();
+        System.out.println("Поиск 'cl' нашел " + tableRows.size() + " термин(ов)");
+
+        searchInput = driver.findElement(By.name("search"));
+        searchInput.clear();
+        searchInput.sendKeys("rain");
+
+        searchBtn = driver.findElement(By.cssSelector(".search-btn:not(.clear-btn)"));
+        searchBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        boolean hasRain = pageSource.contains("rainy") || pageSource.contains("rain");
+        assertThat(hasRain).isTrue();
+        System.out.println("Поиск 'rain' работает");
+
+        searchInput = driver.findElement(By.name("search"));
+        searchInput.clear();
+        searchInput.sendKeys("xyz123");
+
+        searchBtn = driver.findElement(By.cssSelector(".search-btn:not(.clear-btn)"));
+        searchBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("No terms found");
+        assertThat(pageSource).contains("xyz123");
+
+        boolean noTable = driver.findElements(By.cssSelector(".dictionary-table")).isEmpty();
+        assertThat(noTable).isTrue();
+        System.out.println("Поиск несуществующего префикса показывает 'No terms found'");
+
+        WebElement clearBtn = driver.findElement(By.cssSelector(".clear-btn"));
+        clearBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("Total terms:");
+
+        tableRows = driver.findElements(By.cssSelector(".dictionary-table tbody tr"));
+        assertThat(tableRows.isEmpty()).isFalse();
+        System.out.println("Очистка поиска восстановила все термины");
+
+        driver.get(baseUrl + "/dictionary?search=SUN");
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("sunny");
+        System.out.println("Поиск регистронезависимый");
+
+        driver.get(baseUrl + "/dictionary?search=unny");
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("No terms found");
+        assertThat(pageSource).doesNotContain("sunny");
+        System.out.println("Поиск работает по префиксу (первые буквы)");
     }
 }
 
