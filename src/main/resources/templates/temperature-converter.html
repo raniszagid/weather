@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Temperature Converter | WeatherApp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: url('https://source.unsplash.com/1600x900/?temperature,thermometer') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* Шапка */
+        .header {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            height: 60px;
+            width: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nav-links a:hover {
+            background-color: rgba(76, 175, 80, 0.8);
+        }
+
+        /* Контейнер конвертера */
+        .converter-container {
+            max-width: 550px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .converter-card {
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        /* Конвертер 1: °C → °F */
+        .converter-section {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 1px solid #e9ecef;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title .arrow {
+            font-size: 24px;
+            color: #ff9800;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .input-group label {
+            font-weight: bold;
+            color: #555;
+            min-width: 60px;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #ff9800;
+            box-shadow: 0 0 5px rgba(255, 152, 0, 0.3);
+        }
+
+        .unit {
+            color: #666;
+            font-weight: bold;
+            min-width: 60px;
+        }
+
+        .convert-btn {
+            background-color: #ff9800;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .convert-btn:hover {
+            background-color: #f57c00;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .result {
+            margin-top: 15px;
+            padding: 12px;
+            background-color: #fff3e0;
+            border-radius: 8px;
+            color: #e65100;
+            font-weight: bold;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .error-message {
+            margin-top: 15px;
+            padding: 12px;
+            background-color: #ffebee;
+            border-radius: 8px;
+            color: #c62828;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .info-box {
+            background-color: #e3f2fd;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .info-box p {
+            color: #1565c0;
+            font-size: 14px;
+        }
+
+        .formula {
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .reference-table {
+            margin-top: 20px;
+            background-color: #f5f5f5;
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .reference-table h4 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .reference-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .reference-table td {
+            padding: 8px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reference-table td:first-child {
+            font-weight: bold;
+            background-color: #ff9800;
+            color: white;
+            border-radius: 4px 0 0 4px;
+        }
+
+        @media (max-width: 600px) {
+            .converter-container {
+                margin: 20px;
+                padding: 10px;
+            }
+
+            .input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .convert-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <a href="/weather">
+        <img src="/images/logo.jpg" alt="WeatherApp Logo" class="logo">
+    </a>
+    <div class="nav-links">
+        <a href="/weather">Weather</a>
+        <a href="/history">History</a>
+        <a href="/wind-converter">Wind Converter</a>
+        <a href="/temp-converter">Temp Converter</a>
+        <a href="/dictionary">Dictionary</a>
+    </div>
+</div>
+
+<div class="converter-container">
+    <div class="converter-card">
+        <h1>🌡️ Temperature Converter</h1>
+        <div class="subtitle">Convert between Celsius (°C) and Fahrenheit (°F)</div>
+
+        <!-- Конвертер 1: °C → °F -->
+        <div class="converter-section">
+            <div class="section-title">
+                <span>📊 Celsius → Fahrenheit</span>
+                <span class="arrow">➡️</span>
+            </div>
+            <form th:action="@{/temp-converter/to-fahrenheit}" method="POST">
+                <div class="input-group">
+                    <label>Temperature:</label>
+                    <input type="number" step="any" name="celsius" class="input-field"
+                           th:value="${celsiusValue}" placeholder="Enter temperature" required>
+                    <span class="unit">°C</span>
+                    <button type="submit" class="convert-btn">Convert →</button>
+                </div>
+            </form>
+            <div th:if="${fahrenheitValue != null and fahrenheitValue != ''}" class="result">
+                <span th:text="${result}"></span>
+            </div>
+            <div th:if="${error != null}" class="error-message">
+                <span th:text="${error}"></span>
+            </div>
+        </div>
+
+        <!-- Конвертер 2: °F → °C -->
+        <div class="converter-section">
+            <div class="section-title">
+                <span>📊 Fahrenheit → Celsius</span>
+                <span class="arrow">➡️</span>
+            </div>
+            <form th:action="@{/temp-converter/to-celsius}" method="POST">
+                <div class="input-group">
+                    <label>Temperature:</label>
+                    <input type="number" step="any" name="fahrenheit" class="input-field"
+                           th:value="${fahrenheitValue}" placeholder="Enter temperature" required>
+                    <span class="unit">°F</span>
+                    <button type="submit" class="convert-btn">Convert →</button>
+                </div>
+            </form>
+            <div th:if="${celsiusValue != null and celsiusValue != ''}" class="result">
+                <span th:text="${result}"></span>
+            </div>
+        </div>
+
+        <!-- Информационная панель -->
+        <div class="info-box">
+            <p>💡 Formula: °F = (°C × 9/5) + 32</p>
+            <p>🌡️ Formula: °C = (°F - 32) × 5/9</p>
+            <p>❄️ Absolute zero: -273.15 °C = -459.67 °F</p>
+        </div>
+
+        <!-- Справочная таблица -->
+        <div class="reference-table">
+            <h4>📋 Common Temperature References</h4>
+            <table>
+                <tr>
+                    <td>Water boils</td>
+                    <td>100 °C</td>
+                    <td>= 212 °F</td>
+                </tr>
+                <tr>
+                    <td>Body temperature</td>
+                    <td>37 °C</td>
+                    <td>= 98.6 °F</td>
+                </tr>
+                <tr>
+                    <td>Room temperature</td>
+                    <td>20-22 °C</td>
+                    <td>= 68-72 °F</td>
+                </tr>
+                <tr>
+                    <td>Water freezes</td>
+                    <td>0 °C</td>
+                    <td>= 32 °F</td>
+                </tr>
+                <tr>
+                    <td>Very cold</td>
+                    <td>-18 °C</td>
+                    <td>= 0 °F</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="formula">
+            <p>Example: 100°C = 212°F | 32°F = 0°C</p>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

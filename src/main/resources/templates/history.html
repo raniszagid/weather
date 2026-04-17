@@ -176,51 +176,333 @@
             background-color: #f5f5f5;
             padding-left: 20px;
         }
+        .sort-panel {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .sort-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sort-label {
+            font-weight: bold;
+            color: #444;
+        }
+
+        .sort-select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: white;
+        }
+
+        .sort-select:hover {
+            border-color: #4CAF50;
+        }
+
+        .sort-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .sort-btn:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .active-sort {
+            background-color: #2196F3;
+        }
+
+        .order-btn {
+            background-color: #607D8B;
+        }
+
+        /* Добавить новые стили для поиска */
+        .search-container {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+        }
+
+        .search-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .search-btn:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .clear-btn {
+            background-color: #f44336;
+        }
+
+        .clear-btn:hover {
+            background-color: #d32f2f;
+        }
+
+        .search-info {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .highlight {
+            background-color: #ffeb3b;
+            font-weight: bold;
+        }
+
+        /* Стили для пагинации */
+        .pagination-container {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .pagination-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+
+        .pagination-btn:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .page-numbers {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .page-number {
+            display: inline-block;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.3s;
+        }
+
+        .page-number:hover {
+            background-color: #f0f0f0;
+            border-color: #4CAF50;
+        }
+
+        .page-number.current {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+
+        .pagination-info {
+            margin-top: 15px;
+            color: #666;
+            font-size: 14px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <img src="/../images/logo.jpg" alt="WeatherApp Logo" class="logo">
-        
-        <div class="user-menu" th:if="${#authentication.principal != 'anonymousUser'}">
-            <button class="user-btn">
-                <span th:text="${#authentication.principal.username}">User</span>
-                <span>▼</span>
-            </button>
-            <div class="dropdown-content">
-                <a href="/weather">Home</a>
-                <form th:action="@{/logout}" th:method="POST">
-                    <input type="submit" value="Logout"/>
-                </form>
-            </div>
+<div class="header">
+    <img src="/../images/logo.jpg" alt="WeatherApp Logo" class="logo">
+
+    <div class="user-menu" th:if="${#authentication.principal != 'anonymousUser'}">
+        <button class="user-btn">
+            <span th:text="${#authentication.principal.username}">User</span>
+            <span>▼</span>
+        </button>
+        <div class="dropdown-content">
+            <a href="/weather">Home</a>
+            <a href="/wind-converter">Wind Converter</a>
+            <a href="/temp-converter">Temp Converter</a>
+            <a href="/dictionary">Dictionary</a>
+            <form th:action="@{/logout}" th:method="POST">
+                <input type="submit" value="Logout"/>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="history-container">
+    <a href="/weather" class="back-btn">← Back to Main</a>
+
+    <h2 style="text-align: center; color: black;">Your Search History</h2>
+
+    <!-- Панель сортировки -->
+    <div class="sort-panel">
+        <div class="sort-group">
+            <span class="sort-label">Sort by:</span>
+            <select id="sortBy" class="sort-select">
+                <option value="timestamp" th:selected="${currentSortBy == 'timestamp'}">Date & Time</option>
+                <option value="city" th:selected="${currentSortBy == 'city'}">City Name</option>
+            </select>
+        </div>
+
+        <div class="sort-group">
+            <span class="sort-label">Order:</span>
+            <select id="order" class="sort-select">
+                <option value="desc" th:selected="${currentOrder == 'desc'}">Newest / A-Z ↓</option>
+                <option value="asc" th:selected="${currentOrder == 'asc'}">Oldest / Z-A ↑</option>
+            </select>
+        </div>
+
+        <button id="applySort" class="sort-btn">Apply Sorting</button>
+    </div>
+    <div class="search-container">
+        <form method="GET" action="/history" class="search-box">
+            <input type="text"
+                   name="search"
+                   class="search-input"
+                   placeholder="Search by city name (e.g., 'Lo' for London, 'P' for Paris)..."
+                   th:value="${searchQuery}">
+            <button type="submit" class="search-btn">🔍 Search</button>
+            <a href="/history" class="search-btn clear-btn">✖ Clear</a>
+        </form>
+        <div class="search-info" th:if="${searchQuery != null and searchQuery != ''}">
+            <span th:text="'Showing results for: &quot;' + ${searchQuery} + '&quot;'"></span>
+            <span th:text="' (' + ${history.size()} + ' records found)'"></span>
+        </div>
+        <div class="search-info" th:if="${searchQuery != null and searchQuery != '' and history.empty}">
+            <span style="color: #f44336;">No cities found starting with "{{searchQuery}}"</span>
+        </div>
+    </div>
+    <div th:if="${history.empty}">
+        <div class="no-history">
+            <h3>No search history yet</h3>
+            <p>Your weather searches will appear here</p>
         </div>
     </div>
 
-    <div class="history-container">
-        <a href="/weather" class="back-btn">← Back to Main</a>
-        
-        <h2 style="text-align: center; color: black;">Your Search History</h2>
-        
-        <div th:if="${history.empty}">
-            <div class="no-history">
-                <h3>No search history yet</h3>
-                <p>Your weather searches will appear here</p>
-            </div>
-        </div>
-        
-        <div th:each="request : ${history}" class="history-item">
-            <h3 th:text="${request.city + ' - ' + request.timestamp}"></h3>
-            <p th:text="${'Temperature: ' + request.mainTemperature}"></p>
-            <p th:text="${'Wind: ' + request.mainWind}"></p>
-            <p th:text="${'Description: ' + request.description}"></p>
-            
-            <h4 style="margin-top: 15px;">Forecast:</h4>
-            <div th:each="elem : ${request.forecast}" class="forecast-item">
-                <p th:text="${'Day ' + elem.day}"></p>
-                <p th:text="${'Temperature: ' + elem.temperature}"></p>
-                <p th:text="${'Wind: ' + elem.wind}"></p>
-            </div>
+    <div th:each="request : ${history}" class="history-item">
+        <h3 th:text="${request.city + ' - ' + request.timestamp}"></h3>
+        <p th:text="${'Temperature: ' + request.mainTemperature}"></p>
+        <p th:text="${'Wind: ' + request.mainWind}"></p>
+        <p th:text="${'Description: ' + request.description}"></p>
+
+        <h4 style="margin-top: 15px;">Forecast:</h4>
+        <div th:each="elem : ${request.forecast}" class="forecast-item">
+            <p th:text="${'Day ' + elem.day}"></p>
+            <p th:text="${'Temperature: ' + elem.temperature}"></p>
+            <p th:text="${'Wind: ' + elem.wind}"></p>
         </div>
     </div>
+
+    <div th:if="${totalPages > 0}" class="pagination-container" style="margin-top: 30px; text-align: center;">
+        <div class="pagination">
+            <!-- Кнопка "Первая" -->
+            <a th:if="${currentPage > 1}"
+               th:href="@{/history(sortBy=${currentSortBy}, order=${currentOrder}, search=${searchQuery}, page=1)}"
+               class="pagination-btn">⏮ First</a>
+
+            <!-- Кнопка "Предыдущая" -->
+            <a th:if="${currentPage > 1}"
+               th:href="@{/history(sortBy=${currentSortBy}, order=${currentOrder}, search=${searchQuery}, page=${currentPage - 1})}"
+               class="pagination-btn">◀ Previous</a>
+
+            <!-- Номера страниц -->
+            <div class="page-numbers">
+            <span th:each="i : ${#numbers.sequence(1, totalPages)}">
+                <a th:if="${i != currentPage}"
+                   th:href="@{/history(sortBy=${currentSortBy}, order=${currentOrder}, search=${searchQuery}, page=${i})}"
+                   class="page-number">[[${i}]]</a>
+                <span th:if="${i == currentPage}" class="page-number current">[[${i}]]</span>
+            </span>
+            </div>
+
+            <!-- Кнопка "Следующая" -->
+            <a th:if="${currentPage < totalPages}"
+               th:href="@{/history(sortBy=${currentSortBy}, order=${currentOrder}, search=${searchQuery}, page=${currentPage + 1})}"
+               class="pagination-btn">Next ▶</a>
+
+            <!-- Кнопка "Последняя" -->
+            <a th:if="${currentPage < totalPages}"
+               th:href="@{/history(sortBy=${currentSortBy}, order=${currentOrder}, search=${searchQuery}, page=${totalPages})}"
+               class="pagination-btn">Last ⏭</a>
+        </div>
+
+        <div class="pagination-info">
+            Showing [[${(currentPage - 1) * pageSize + 1}]] - [[${(currentPage - 1) * pageSize + history.size()}]]
+            of [[${totalElements}]] records
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('applySort').addEventListener('click', function() {
+        const sortBy = document.getElementById('sortBy').value;
+        const order = document.getElementById('order').value;
+        window.location.href = '/history?sortBy=' + sortBy + '&order=' + order;
+    });
+</script>
 </body>
 </html>

@@ -33,4 +33,21 @@ public class RequestService {
     public List<RequestHistoryEntity> findCurrentUserRequests(User user) {
         return requestRepository.findRequestHistoryEntitiesByUser(user);
     }
+
+    // Новые методы для сортировки
+    public List<RequestHistoryEntity> findByUserOrderByCityAsc(User user) {
+        return requestRepository.findByUserOrderByAddressAsc(user);
+    }
+
+    public List<RequestHistoryEntity> findByUserOrderByCityDesc(User user) {
+        return requestRepository.findByUserOrderByAddressDesc(user);
+    }
+
+    public List<RequestHistoryEntity> findByUserOrderByTimestampAsc(User user) {
+        return requestRepository.findByUserOrderByTimestampAsc(user);
+    }
+
+    public List<RequestHistoryEntity> findByUserOrderByTimestampDesc(User user) {
+        return requestRepository.findByUserOrderByTimestampDesc(user);
+    }
 }

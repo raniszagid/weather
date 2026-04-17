@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Wind Speed Converter | WeatherApp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: url('https://source.unsplash.com/1600x900/?weather,wind') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* Шапка */
+        .header {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            height: 60px;
+            width: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nav-links a:hover {
+            background-color: rgba(76, 175, 80, 0.8);
+        }
+
+        /* Контейнер конвертера */
+        .converter-container {
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .converter-card {
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        /* Конвертер 1: km/h → m/s */
+        .converter-section {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 1px solid #e9ecef;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title .arrow {
+            font-size: 24px;
+            color: #4CAF50;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .input-group label {
+            font-weight: bold;
+            color: #555;
+            min-width: 60px;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+        }
+
+        .unit {
+            color: #666;
+            font-weight: bold;
+            min-width: 60px;
+        }
+
+        .convert-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .convert-btn:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .result {
+            margin-top: 15px;
+            padding: 12px;
+            background-color: #e8f5e9;
+            border-radius: 8px;
+            color: #2e7d32;
+            font-weight: bold;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .error-message {
+            margin-top: 15px;
+            padding: 12px;
+            background-color: #ffebee;
+            border-radius: 8px;
+            color: #c62828;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .info-box {
+            background-color: #e3f2fd;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .info-box p {
+            color: #1565c0;
+            font-size: 14px;
+        }
+
+        .formula {
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        @media (max-width: 600px) {
+            .converter-container {
+                margin: 20px;
+                padding: 10px;
+            }
+
+            .input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .convert-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <a href="/weather">
+        <img src="/images/logo.jpg" alt="WeatherApp Logo" class="logo">
+    </a>
+    <div class="nav-links">
+        <a href="/weather">Weather</a>
+        <a href="/history">History</a>
+        <a href="/wind-converter">Wind Converter</a>
+        <a href="/temp-converter">Temp Converter</a>
+        <a href="/dictionary">Dictionary</a>
+    </div>
+</div>
+
+<div class="converter-container">
+    <div class="converter-card">
+        <h1>💨 Wind Speed Converter</h1>
+        <div class="subtitle">Convert between kilometers per hour (km/h) and meters per second (m/s)</div>
+
+        <!-- Конвертер 1: km/h → m/s -->
+        <div class="converter-section">
+            <div class="section-title">
+                <span>📊 km/h → m/s</span>
+                <span class="arrow">➡️</span>
+            </div>
+            <form th:action="@{/wind-converter/to-ms}" method="POST" th:object="${converterForm}">
+                <div class="input-group">
+                    <label>Speed:</label>
+                    <input type="number" step="any" name="kmh" class="input-field"
+                           th:value="${kmhValue}" placeholder="Enter wind speed" required>
+                    <span class="unit">km/h</span>
+                    <button type="submit" class="convert-btn">Convert →</button>
+                </div>
+            </form>
+            <div th:if="${msValue != null and msValue != ''}" class="result">
+                <span th:text="${result}"></span>
+            </div>
+            <div th:if="${error != null}" class="error-message">
+                <span th:text="${error}"></span>
+            </div>
+        </div>
+
+        <!-- Конвертер 2: m/s → km/h -->
+        <div class="converter-section">
+            <div class="section-title">
+                <span>📊 m/s → km/h</span>
+                <span class="arrow">➡️</span>
+            </div>
+            <form th:action="@{/wind-converter/to-kmh}" method="POST">
+                <div class="input-group">
+                    <label>Speed:</label>
+                    <input type="number" step="any" name="ms" class="input-field"
+                           th:value="${msValue}" placeholder="Enter wind speed" required>
+                    <span class="unit">m/s</span>
+                    <button type="submit" class="convert-btn">Convert →</button>
+                </div>
+            </form>
+            <div th:if="${kmhValue != null and kmhValue != ''}" class="result">
+                <span th:text="${result}"></span>
+            </div>
+        </div>
+
+        <!-- Информационная панель -->
+        <div class="info-box">
+            <p>💡 Formula: 1 m/s = 3.6 km/h</p>
+            <p>🌪️ To convert km/h to m/s, divide by 3.6</p>
+            <p>🚀 To convert m/s to km/h, multiply by 3.6</p>
+        </div>
+        <div class="formula">
+            <p>Example: 36 km/h = 10 m/s | 10 m/s = 36 km/h</p>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
