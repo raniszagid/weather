@@ -67,6 +67,138 @@ public class WeatherAppE2ETest {
     }
 
     @Test
+    void e2e01_baseSuccessfulScenario() throws InterruptedException {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+        String[] cities = {"Paris", "Madrid", "London"};
+
+        driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+
+        for (String city : cities) {
+            WebElement cityInput = driver.findElement(By.id("city"));
+            cityInput.clear();
+            cityInput.sendKeys(city);
+            driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
+            Thread.sleep(4000);
+            assertThat(driver.getPageSource()).contains("°C");
+        }
+
+        driver.get(baseUrl + "/history");
+        Thread.sleep(3000);
+
+        String historyPage = driver.getPageSource();
+        for (String city : cities) {
+            assertThat(historyPage).contains(city);
+        }
+    }
+
+    @Test
+    void e2e02_searchNonExistentCity_ShouldShowError() throws InterruptedException {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+        String invalidCity = "NonExistentCity123456";
+
+        driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+
+        driver.findElement(By.id("city")).sendKeys(invalidCity);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
+        Thread.sleep(5000);
+
+        String currentUrl = driver.getCurrentUrl();
+        String pageSource = driver.getPageSource();
+
+        boolean isOnErrorPage = currentUrl.contains("/error");
+        boolean hasErrorMessage = pageSource.contains("error") ||
+                pageSource.contains("Error") ||
+                pageSource.contains("not found") ||
+                pageSource.contains("City not found");
+
+        assertThat(isOnErrorPage || hasErrorMessage).isTrue();
+    }
+
+    @Test
+    void e2e03_searchWithEmptyCity_ShouldDoNothing() throws InterruptedException {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+
+        driver.get(baseUrl + "/history");
+        Thread.sleep(3000);
+
+        String historyPage = driver.getPageSource();
+        boolean isEmptyInitially = historyPage.contains("No search history yet");
+        assertThat(isEmptyInitially).isTrue();
+        System.out.println("Изначально история пуста");
+
+        driver.get(baseUrl + "/weather");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("city")).sendKeys("");
+        driver.findElement(By.cssSelector("input[type='submit'][value='Get Weather']")).click();
+        Thread.sleep(3000);
+
+        String currentUrl = driver.getCurrentUrl();
+        assertThat(currentUrl).contains("/weather");
+        System.out.println("После попытки поиска с пустым полем остались на /weather");
+
+        driver.get(baseUrl + "/history");
+        Thread.sleep(3000);
+
+        historyPage = driver.getPageSource();
+        boolean isEmptyAfterAttempt = historyPage.contains("No search history yet");
+        assertThat(isEmptyAfterAttempt).isTrue();
+    }	
+
+    @Test
     void e2e04_historyIsIsolatedBetweenUsers() throws InterruptedException {
         String username1 = "user1_" + UUID.randomUUID().toString().substring(0, 8);
         String password1 = "pass123";
