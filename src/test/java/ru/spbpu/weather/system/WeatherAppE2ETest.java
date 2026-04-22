@@ -381,5 +381,199 @@ public class WeatherAppE2ETest {
         }
         return order;
     }
+
+    @Test
+    void e2e09_temperatureConverter() throws InterruptedException {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        driver.get(baseUrl + "/temp-converter");
+        Thread.sleep(2000);
+
+        assertThat(driver.getPageSource()).contains("Temperature Converter");
+
+        WebElement celsiusInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("celsius")));
+        celsiusInput.clear();
+        celsiusInput.sendKeys("100");
+
+        WebElement convertToFahrenheitBtn = driver.findElement(By.cssSelector("form[action*='/to-fahrenheit'] button"));
+        convertToFahrenheitBtn.click();
+        Thread.sleep(2000);
+
+        String pageSource = driver.getPageSource();
+        boolean hasResult = pageSource.contains("100.0 °C = 212.0 °F") ||
+                pageSource.contains("100 °C = 212 °F") ||
+                pageSource.contains("100.0 °C = 212 °F") ||
+                pageSource.contains("100 °C = 212.0 °F");
+        assertThat(hasResult).isTrue();
+
+        WebElement fahrenheitInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("fahrenheit")));
+        fahrenheitInput.clear();
+        fahrenheitInput.sendKeys("212");
+
+        WebElement convertToCelsiusBtn = driver.findElement(By.cssSelector("form[action*='/to-celsius'] button"));
+        convertToCelsiusBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        hasResult = pageSource.contains("212.0 °F = 100.0 °C") ||
+                pageSource.contains("212 °F = 100 °C") ||
+                pageSource.contains("212.0 °F = 100 °C") ||
+                pageSource.contains("212 °F = 100.0 °C");
+        assertThat(hasResult).isTrue();
+
+
+        celsiusInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.name("celsius")));
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
+                "arguments[0].setAttribute('type', 'number');", celsiusInput);
+        celsiusInput.clear();
+        celsiusInput.sendKeys("0");
+
+        convertToFahrenheitBtn = driver.findElement(By.cssSelector("form[action*='/to-fahrenheit'] button"));
+        convertToFahrenheitBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        hasResult = pageSource.contains("0.0 °C = 32.0 °F") ||
+                pageSource.contains("0 °C = 32 °F");
+        assertThat(hasResult).isTrue();
+    }
+
+    @Test
+    void e2e10_weatherDictionary_ShouldSearchByPrefix() throws InterruptedException {
+        String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pass123";
+
+        driver.get(baseUrl + "/auth/registration");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Sign up!']")).click();
+        Thread.sleep(3000);
+
+        driver.get(baseUrl + "/auth/login");
+        Thread.sleep(2000);
+
+        driver.findElement(By.id("username")).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.cssSelector("input[type='submit'][value='Login']")).click();
+        Thread.sleep(5000);
+
+        assertThat(driver.getCurrentUrl()).contains("/weather");
+
+        driver.get(baseUrl + "/dictionary");
+        Thread.sleep(2000);
+
+        String pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("Weather Dictionary");
+        assertThat(pageSource).contains("English-Russian weather terms");
+
+        List<WebElement> tableRows = driver.findElements(By.cssSelector(".dictionary-table tbody tr"));
+        assertThat(tableRows.isEmpty()).isFalse();
+        System.out.println("Найдено терминов на странице: " + tableRows.size());
+
+        WebElement searchInput = driver.findElement(By.name("search"));
+        searchInput.clear();
+        searchInput.sendKeys("sun");
+
+        WebElement searchBtn = driver.findElement(By.cssSelector(".search-btn:not(.clear-btn)"));
+        searchBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("sunny");
+        assertThat(pageSource).contains("солнечно");
+
+        tableRows = driver.findElements(By.cssSelector(".dictionary-table tbody tr"));
+        assertThat(tableRows.size()).isEqualTo(1);
+        System.out.println("Поиск 'sun' нашел " + tableRows.size() + " термин(ов)");
+
+        searchInput = driver.findElement(By.name("search"));
+        searchInput.clear();
+        searchInput.sendKeys("cl");
+
+        searchBtn = driver.findElement(By.cssSelector(".search-btn:not(.clear-btn)"));
+        searchBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        tableRows = driver.findElements(By.cssSelector(".dictionary-table tbody tr"));
+        assertThat(tableRows.size()).isGreaterThan(0);
+
+        boolean hasCloudy = pageSource.contains("cloudy");
+        boolean hasClear = pageSource.contains("clear");
+        assertThat(hasCloudy || hasClear).isTrue();
+        System.out.println("Поиск 'cl' нашел " + tableRows.size() + " термин(ов)");
+
+        searchInput = driver.findElement(By.name("search"));
+        searchInput.clear();
+        searchInput.sendKeys("rain");
+
+        searchBtn = driver.findElement(By.cssSelector(".search-btn:not(.clear-btn)"));
+        searchBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        boolean hasRain = pageSource.contains("rainy") || pageSource.contains("rain");
+        assertThat(hasRain).isTrue();
+        System.out.println("Поиск 'rain' работает");
+
+        searchInput = driver.findElement(By.name("search"));
+        searchInput.clear();
+        searchInput.sendKeys("xyz123");
+
+        searchBtn = driver.findElement(By.cssSelector(".search-btn:not(.clear-btn)"));
+        searchBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("No terms found");
+        assertThat(pageSource).contains("xyz123");
+
+        boolean noTable = driver.findElements(By.cssSelector(".dictionary-table")).isEmpty();
+        assertThat(noTable).isTrue();
+        System.out.println("Поиск несуществующего префикса показывает 'No terms found'");
+
+        WebElement clearBtn = driver.findElement(By.cssSelector(".clear-btn"));
+        clearBtn.click();
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("Total terms:");
+
+        tableRows = driver.findElements(By.cssSelector(".dictionary-table tbody tr"));
+        assertThat(tableRows.isEmpty()).isFalse();
+        System.out.println("Очистка поиска восстановила все термины");
+
+        driver.get(baseUrl + "/dictionary?search=SUN");
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("sunny");
+        System.out.println("Поиск регистронезависимый");
+
+        driver.get(baseUrl + "/dictionary?search=unny");
+        Thread.sleep(2000);
+
+        pageSource = driver.getPageSource();
+        assertThat(pageSource).contains("No terms found");
+        assertThat(pageSource).doesNotContain("sunny");
+        System.out.println("Поиск работает по префиксу (первые буквы)");
+    }
 }
 
